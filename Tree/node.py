@@ -1,72 +1,63 @@
-# File: bptree_nodes.py
-# This file contains the classes for the nodes of the B+ tree.
-# This corresponds to Module 2 in Internal_Info.html
+# Tree/node.py
 
-from typing import List, Optional, Union
+from typing import List, Optional
+from Tree.enums import ValueMode
 
-class Node:
-    """
-    A base class for B+ tree nodes.
-    It stores keys, a parent pointer, and a flag for leaf status 
-   .
-    """
-    def __init__(self, parent: Optional['InternalNode'] = None, is_leaf: bool = False):
-        self.keys: List[str] = []  # SSN keys
-        self.parent: Optional['InternalNode'] = parent
-        self.is_leaf: bool = is_leaf
+# Static counter for node IDs (for visualization/debugging)
+_node_counter = 0
+def get_next_node_id():
+    global _node_counter
+    _node_counter += 1
+    return _node_counter
 
-    def is_full(self) -> bool:
-        """Checks if the node has reached its maximum capacity."""
-        raise NotImplementedError
 
-    def get_size(self) -> int:
-        """Returns the current number of keys in the node."""
-        return len(self.keys)
+class BaseNode:
+    """Base class for B+ tree nodes (internal + leaf)."""
+    def __init__(self):
+        self.keys: List[str] = []
+        self.parent: Optional['InternalNode'] = None
+        self.id: int = get_next_node_id()
 
-class InternalNode(Node):
-    """
-    Represents an internal node in the B+ tree.
-    It stores keys to guide the search and pointers to its child nodes
-   .
-    
-    Assignment constraint: order P=3[cite: 55].
-    This means:
-    - Max children = 3
-    - Max keys = 2 (P - 1)
-    """
-    def __init__(self, parent: Optional['InternalNode'] = None):
-        super().__init__(parent, is_leaf=False)
-        self.children: List[Union['InternalNode', 'LeafNode']] = []
-        # Per assignment, P = 3 [cite: 55]
-        self.max_size = 3  # Max number of *children*
+    def is_leaf(self) -> bool:
+        return False  # overridden in LeafNode
 
-    def is_full(self) -> bool:
-        """Internal node is full if it has P children."""
-        return len(self.children) >= self.max_size
+    def __repr__(self):
+        return f"{self.__class__.__name__}(id={self.id}, keys={self.keys})"
 
-class LeafNode(Node):
-    """
-    Represents a leaf node in the B+ tree.
-    It stores keys and data pointers (references to the record's 
-    location in a block).
-    
-    Assignment constraint: order p_leaf=2[cite: 55].
-    This means:
-    - Max keys (and data pointers) = 2
-    """
-    def __init__(self, parent: Optional['InternalNode'] = None):
-        super().__init__(parent, is_leaf=True)
-        # data_pointers will store the (block_id, record_offset) tuple
-        # as suggested in the FileIndexManager
-        self.data_pointers: List[tuple] = []
-        
-        # Pointers for leaf-level linked list
+
+class LeafNode(BaseNode):
+    """Leaf node: stores actual data references + linked list pointers."""
+    def __init__(self, value_mode: ValueMode = ValueMode.KEY_ONLY):
+        super().__init__()
+        self.values: List[Optional[object]] = []  # aligned with keys
         self.next_leaf: Optional['LeafNode'] = None
         self.prev_leaf: Optional['LeafNode'] = None
-        
-        # Per assignment, p_leaf = 2 [cite: 55]
-        self.max_size = 2  # Max number of *keys* / *data_pointers*
+        self.value_mode = value_mode
 
-    def is_full(self) -> bool:
-        """Leaf node is full if it has p_leaf keys."""
-        return self.get_size() >= self.max_size
+    def is_leaf(self) -> bool:
+        return True
+
+    def is_full(self, order_leaf: int) -> bool:
+        return len(self.keys) > order_leaf
+
+    def min_keys(self, order_leaf: int) -> int:
+        return (order_leaf + 1) // 2  # ceil rule
+
+    def __repr__(self):
+        return f"LeafNode(id={self.id}, keys={self.keys})"
+
+
+class InternalNode(BaseNode):
+    """Internal node: stores keys and children pointers."""
+    def __init__(self):
+        super().__init__()
+        self.children: List[BaseNode] = []
+
+    def is_full(self, order_internal: int) -> bool:
+        return len(self.children) > order_internal
+
+    def min_children(self, order_internal: int) -> int:
+        return (order_internal + 1) // 2
+
+    def __repr__(self):
+        return f"InternalNode(id={self.id}, keys={self.keys})"
