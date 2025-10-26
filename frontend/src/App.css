@@ -1,6 +1,8 @@
 .App {
   text-align: center;
 }
+/* global dark background */
+html, body, #root, .App { background: #05060a; color: #e6eef8; min-height: 100%; }
 
 .App-logo {
   height: 40vmin;
@@ -15,12 +17,7 @@
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  padding: 18px 12px;
   color: white;
 }
 
@@ -36,3 +33,46 @@
     transform: rotate(360deg);
   }
 }
+
+
+/* Dark mode layout */
+.App-main {
+  padding: 18px;
+}
+
+.layout-split { display: flex; gap: 18px; align-items: flex-start; }
+.left-col { width: calc(100% - 400px); }
+.right-panel { width: 360px; display:flex; flex-direction:column; gap:12px }
+
+.visualiser-wrap { 
+  border-radius: 10px; 
+  padding: 14px; 
+  background: linear-gradient(180deg,#07101a,#0b1220); 
+  height: 680px; /* matches right panel height (controls + 2 info boxes + gaps) */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.controls { display:flex; flex-direction:column; gap:12px; padding:12px; background: linear-gradient(180deg,#0f1724,#0b1220); border-radius:10px; border:1px solid rgba(255,255,255,0.03); }
+.controls .input-row { display:flex; gap:8px; }
+.controls input { padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: #e6eef8; }
+.controls .buttons-column { display:flex; flex-direction:column; gap:8px; }
+.controls button { padding:10px 12px; border-radius:8px; border:none; background: #ff4da6; color:#07101a; font-weight:600; cursor:pointer }
+.controls button.primary { background: #ff4da6 }
+.controls button:disabled { opacity:0.45; cursor:not-allowed }
+.toggle { display:flex; gap:6px; align-items:center; margin-left:8px; color:#cfeffd }
+
+.info-panel { display:flex; flex-direction:column; gap:10px }
+.info-card { padding:12px; background: linear-gradient(180deg,#081018,#0c141c); border-radius:8px; border:1px solid rgba(255,255,255,0.03); color:#cfeffd }
+.info-title { font-weight:700; color:#ffd6eb; margin-bottom:6px }
+.info-body { padding-bottom:8px }
+.info-row { margin:6px 0; font-size:13px }
+
+.node { width:140px; min-height:64px; border-radius:10px; padding:8px; color:#eafcff; box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-size:13px }
+.node.internal { background: linear-gradient(180deg,#2a0b2d,#4a0f46); border: 2px solid rgba(255,77,166,0.18) }
+.node.leaf { background: linear-gradient(180deg,#06232b,#00343f); border: 2px solid rgba(0,229,255,0.16) }
+.node .node-id { font-size:11px; color:#b7f8ff; opacity:0.8 }
+.node .keys { font-weight:700; color:#fff; margin-top:6px }
+.node .vals { font-size:12px; color:#bfefff; opacity:0.95 }
+
+.links { pointer-events: none }
+

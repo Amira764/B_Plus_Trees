@@ -1,0 +1,14 @@
+I do not like the current frontend but this is a starting version
+so here are the Todos
+1. verify all code 
+2. adjust the height of the Tree Canvas 
+3. adjust colours of buttons and tree boxes
+4. make boxes separated in each subtree
+5. fix arrows 
+6. add more info (block pointer, record, etc)
+7. add arrows connecting leef subtrees 
+8. maybe add a [..blocks..] under the tree for the actual memory
+9. adjust tree boxes colours
+10. what is the hashtag at the top of the box ?
+11. Implement and Integrate Backend
+12. add command for reflecting changes in the code without having to rerun npm start
