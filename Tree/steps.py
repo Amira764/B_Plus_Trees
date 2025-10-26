@@ -8,11 +8,10 @@ from Tree.node import LeafNode, InternalNode
 class Step:
     """Base class for all B+ tree operation steps."""
     def __init__(self, step_type: StepType, message: str):
-        self.step_type = step_type
-        self.message = message
+        pass
 
     def __repr__(self):
-        return f"{self.step_type.name}: {self.message}"
+        pass
 
 
 # =============== #
@@ -21,15 +20,7 @@ class Step:
 
 class InsertLeafStep(Step):
     def __init__(self, leaf: LeafNode, key: str, index: int, before: List[str], after: List[str]):
-        super().__init__(
-            StepType.INSERT_LEAF,
-            f"Inserted key {key} into Leaf {leaf.id} at index {index}."
-        )
-        self.leaf = leaf
-        self.key = key
-        self.index = index
-        self.before = before
-        self.after = after
+        pass
 
 
 class SplitLeafStep(Step):
@@ -40,16 +31,7 @@ class SplitLeafStep(Step):
                  before: List[str],
                  left_after: List[str],
                  right_after: List[str]):
-        super().__init__(
-            StepType.SPLIT_LEAF,
-            f"Leaf {old_leaf.id} split. Promoted key {promoted_key}."
-        )
-        self.old_leaf = old_leaf
-        self.new_leaf = new_leaf
-        self.promoted_key = promoted_key
-        self.before = before
-        self.left_after = left_after
-        self.right_after = right_after
+        pass
 
 
 class SplitInternalStep(Step):
@@ -60,26 +42,12 @@ class SplitInternalStep(Step):
                  before: List[str],
                  left_after: List[str],
                  right_after: List[str]):
-        super().__init__(
-            StepType.SPLIT_INTERNAL,
-            f"Internal Node {old_node.id} split. Promoted {promoted_key}."
-        )
-        self.old_node = old_node
-        self.new_node = new_node
-        self.promoted_key = promoted_key
-        self.before = before
-        self.left_after = left_after
-        self.right_after = right_after
+        pass
 
 
 class NewRootStep(Step):
     def __init__(self, old_root, new_root):
-        super().__init__(
-            StepType.NEW_ROOT,
-            f"Created new root {new_root.id}."
-        )
-        self.old_root = old_root
-        self.new_root = new_root
+        pass
 
 
 # ============== #
