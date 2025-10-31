@@ -1,14 +1,17 @@
-import { useState, useRef } from 'react';
-import Papa from 'papaparse';
-import { FileIndexManager } from '../models/filesystem.js';
-import styles from '../styles/CsvHandler.module.css';
+import { useState, useRef } from "react";
+import Papa from "papaparse";
+import { FileIndexManager } from "../models/filesystem.js";
+import styles from "../styles/CsvHandler.module.css";
+import BPlusTreeVisualizer from "./BPlusTreeVisualizer.jsx";
 
 const CsvHandler = () => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewRows, setPreviewRows] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [recordNumInput, setRecordNumInput] = useState('');
-  const [detailsText, setDetailsText] = useState('');
+  const [recordNumInput, setRecordNumInput] = useState("");
+  const [detailsText, setDetailsText] = useState("");
+  const [treeVersion, setTreeVersion] = useState(0);
+
   const fileIndexRef = useRef(null);
 
   const handleFileUpload = (e) => {
@@ -24,7 +27,7 @@ const CsvHandler = () => {
       for (let i = 0; i < toInsert; i++) {
         fileIndexRef.current.insert_record(i);
       }
-      
+
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -32,8 +35,8 @@ const CsvHandler = () => {
           setPreviewRows(results.data || []);
           setPreviewVisible(true);
           setSelectedRecord(null);
-          setRecordNumInput('');
-          setDetailsText('');
+          setRecordNumInput("");
+          setDetailsText("");
         },
       });
     };
@@ -42,14 +45,17 @@ const CsvHandler = () => {
 
   const parseAndValidateRecord = () => {
     if (!fileIndexRef.current) {
-      return { ok: false, message: 'No CSV loaded.' };
+      return { ok: false, message: "No CSV loaded." };
     }
     const num = parseInt(recordNumInput, 10);
     if (Number.isNaN(num)) {
-      return { ok: false, message: 'Enter a valid record number (1-based).' };
+      return { ok: false, message: "Enter a valid record number (1-based)." };
     }
     if (num < 1 || num > previewRows.length) {
-      return { ok: false, message: `Enter a record number between 1 and ${previewRows.length} (1-based).` };
+      return {
+        ok: false,
+        message: `Enter a record number between 1 and ${previewRows.length} (1-based).`,
+      };
     }
     return { ok: true, index: num - 1, original: num };
   };
@@ -61,7 +67,7 @@ const CsvHandler = () => {
       return;
     }
     fileIndexRef.current.insert_record(res.index);
-    alert(`Called filesystem.insert_record(${res.original}) (1-based).`);
+    setTreeVersion((v) => v + 1); // 🔄 refresh visualization
   };
 
   const handleDeleteRecord = () => {
@@ -71,12 +77,12 @@ const CsvHandler = () => {
       return;
     }
     fileIndexRef.current.delete_record(res.original);
-    alert(`Called filesystem.delete_record(${res.original}) (1-based).`);
+    setTreeVersion((v) => v + 1); // 🔄 refresh visualization
   };
 
   const handleDisplayDetails = () => {
     if (!fileIndexRef.current) {
-      alert('No CSV loaded.');
+      alert("No CSV loaded.");
       return;
     }
     fileIndexRef.current.show_blocks();
@@ -104,7 +110,7 @@ const CsvHandler = () => {
           type="file"
           accept=".csv"
           onChange={handleFileUpload}
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
         />
         <label htmlFor="csv-upload" className={styles.uploadButton}>
           Upload CSV
@@ -139,7 +145,7 @@ const CsvHandler = () => {
             className={styles.previewButton}
             onClick={() => setPreviewVisible((v) => !v)}
           >
-            {previewVisible ? 'Hide Preview' : 'Show Preview'}
+            {previewVisible ? "Hide Preview" : "Show Preview"}
           </button>
 
           {previewVisible && (
@@ -159,7 +165,7 @@ const CsvHandler = () => {
                     <tr
                       key={idx}
                       onClick={() => onRowClick(idx)}
-                      className={selectedRecord === idx ? styles.selected : ''}
+                      className={selectedRecord === idx ? styles.selected : ""}
                     >
                       <td className={styles.recordNum}>{idx + 1}</td>
                       {Object.values(row).map((cell, ci) => (
@@ -179,6 +185,12 @@ const CsvHandler = () => {
           <h4>Filesystem Blocks Summary</h4>
           <pre>{detailsText}</pre>
         </div>
+      )}
+      {fileIndexRef.current?.bPlusTree && (
+        <BPlusTreeVisualizer
+          key={treeVersion}
+          tree={fileIndexRef.current.bPlusTree}
+        />
       )}
     </div>
   );

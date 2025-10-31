@@ -1,111 +1,140 @@
-import { Record } from './record.js';
-import { Block } from './block.js';
+// filesystem.js
+import { Record } from "./record.js";
+import { Block } from "./block.js";
+import { BPlusTree } from "../models/b_plus_tree.js";
 
-
+/**
+ * FileIndexManager
+ * ----------------
+ * Simulates a simple file storage system that manages:
+ *  - Disk blocks
+ *  - Fixed-length records
+ *  - A B+ Tree index on the SSN field
+ */
 export class FileIndexManager {
   constructor() {
-    this.blocks = [new Block(0)]; 
-    this.allRecords = []; 
-    this.bPlusTree = null; 
+    this.blocks = [new Block(0)];
+    this.allRecords = [];
+    this.bPlusTree = this.initialize_tree();
   }
 
+  /**
+   * Loads a CSV file containing employee records into memory.
+   * Each record is wrapped as a Record instance.
+   */
   load_csv(csvText) {
     this.allRecords = [];
-    
-    const lines = csvText.trim().split('\n');
+
+    const lines = csvText.trim().split("\n");
     if (lines.length < 2) {
       console.error("CSV file is empty or has no data.");
       return;
     }
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headers = lines[0].split(",").map((h) => h.trim());
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
       if (values.length === headers.length) {
         const row = {};
         headers.forEach((header, index) => {
-          row[header] = values[index] ? values[index].replace(/"/g, '') : '';
+          row[header] = values[index] ? values[index].replace(/"/g, "") : "";
         });
         this.allRecords.push(new Record(row, i));
       }
     }
-    console.log(`Loaded ${this.allRecords.length} records from CSV.`);
+
+    console.log(`✅ Loaded ${this.allRecords.length} records from CSV.`);
   }
 
-
-  // TODO: Actually initialize B+ Tree
+  /**
+   * Initializes the B+ Tree and inserts the first 10 records.
+   */
   initialize_tree() {
-    // console.log("Initializing B+ Tree (STUB)...");
-    // // this.bPlusTree = new BPlusTree(); // This will be uncommented later
-
-    // // As per assignment, load the first 10 records
-    // const initialRecords = this.allRecords.slice(0, 10);
-    // for (const record of initialRecords) {
-    //   this.insert_record(record);
-    // }
+    return new BPlusTree(3, 2); // internal=3, leaf=2
   }
 
-
-  // TODO: Implement actual insertion in B+ Tree
+  /**
+   * Inserts a record into the file blocks and the B+ Tree.
+   * @param {number} recordNum - index of record in allRecords[]
+   */
   insert_record(recordNum) {
-    // hasa we push 3la a5r wa7d adam feh delete marker, wla do we actually remove at some point to be seen lama azkrha
-    let blockToInsert = this.blocks.find(b => !b.is_full());
+    const record = this.allRecords[recordNum];
+    if (!record) {
+      console.error(`Record #${recordNum} not found.`);
+      return;
+    }
 
+    // find a block that isn't full
+    let blockToInsert = this.blocks.find((b) => !b.is_full());
     if (!blockToInsert) {
       blockToInsert = new Block(this.blocks.length);
       this.blocks.push(blockToInsert);
     }
-    
-    blockToInsert.add_record(this.allRecords[recordNum]);
-    
-    // add it to the b+ tree
-    // const dataPointer = {
-    //   blockId: blockToInsert.blockId,
-    //   recordIndex: blockToInsert.records.length - 1
-    // };
 
-    // // Update the index (STUBBED)
-    // if (this.bPlusTree) {
-    //   // this.bPlusTree.insert(record.ssn, dataPointer);
-    // } else {
-    //   console.log(`  [Index STUB] Would insert (SSN: ${record.ssn}, Pointer: B${dataPointer.blockId}, S${dataPointer.recordIndex}) into B+ Tree.`);
-    // }
+    blockToInsert.add_record(record);
+
+    const pointer = {
+      blockId: blockToInsert.blockId,
+      recordIndex: blockToInsert.records.length - 1,
+    };
+
+    // Insert into B+ Tree
+    if (this.bPlusTree) {
+      this.bPlusTree.insert(record.ssn, pointer);
+      console.log(
+        `Inserted record (SSN: ${record.ssn}) into B+ Tree → Block ${pointer.blockId}, Slot ${pointer.recordIndex}`
+      );
+    } else {
+      console.warn("B+ Tree not initialized yet.");
+    }
   }
 
-
-  // TODO: Implement actual deletion in B+ Tree
+  /**
+   * Deletes a record by its original CSV line number.
+   * Marks the record deleted in its block and removes from B+ Tree.
+   */
   delete_record(recordNum) {
-    let recordFound = false;
+    let deletedSSN = null;
+
     for (const block of this.blocks) {
-      if (block.mark_deleted(recordNum)) {
-        recordFound = true;
-        break;
+      for (const rec of block.records) {
+        if (rec.originalLineNumber === recordNum) {
+          deletedSSN = rec.ssn;
+          block.mark_deleted(recordNum);
+          console.log(`Marked record with SSN ${rec.ssn} as deleted.`);
+          break;
+        }
       }
     }
 
-    // if (recordFound) {
-    //   // Update the index (STUBBED)
-    //   if (this.bPlusTree) {
-    //     // this.bPlusTree.delete(ssn);
-    //   } else {
-    //     console.log(`  [Index STUB] Would delete (SSN: ${ssn}) from B+ Tree.`);
-    //   }
-    // } else {
-    //   console.log(`Record with SSN ${ssn} not found for deletion.`);
-    // }
+    if (deletedSSN && this.bPlusTree) {
+      this.bPlusTree.delete(deletedSSN);
+      console.log(`Deleted SSN ${deletedSSN} from B+ Tree index.`);
+    } else if (!deletedSSN) {
+      console.log(`Record #${recordNum} not found for deletion.`);
+    }
   }
 
-
+  /**
+   * Displays all file blocks and their record contents.
+   */
   show_blocks() {
-    console.log("\n--- Current File Blocks State ---");
+    console.log("\n📦 --- Current File Blocks State ---");
     for (const block of this.blocks) {
       block.display();
     }
   }
 
-
-  // TODO: Implement B+ Tree visualization
+  /**
+   * Prints the current B+ Tree structure.
+   */
   show_tree() {
+    console.log("\n🌳 --- Current B+ Tree Structure ---");
+    if (this.bPlusTree) {
+      this.bPlusTree.visualize();
+    } else {
+      console.log("No B+ Tree initialized yet.");
+    }
   }
 }
