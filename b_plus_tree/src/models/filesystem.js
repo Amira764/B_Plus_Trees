@@ -227,6 +227,7 @@ export class FileIndexManager {
       return false;
     }
 
+    presentInAnyBlock = false;
     for (const block of this.blocks)
     {
       const found = block.records.findLast(
@@ -234,14 +235,15 @@ export class FileIndexManager {
       );
       if (found)
       {
+        presentInAnyBlock = true;
         block.mark_deleted(recordToDelete.originalLineNumber);
         console.log(`Marked record with SSN ${recordToDelete.ssn} as deleted.`);
         break;
       }
-      else
-      {
-        alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
-      }
+    }
+    if(!presentInAnyBlock)
+    {
+      alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
     }
 
     if (this.bPlusTree)
