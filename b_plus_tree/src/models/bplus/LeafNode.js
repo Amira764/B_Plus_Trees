@@ -42,7 +42,8 @@ export class LeafNode {
     return null;
   }
 
-  delete(key) {
+  delete(key)
+  {
     const idx = this.keys.findIndex(k => k === key);
     if (idx !== -1) {
       const deletedKey = this.keys[idx];

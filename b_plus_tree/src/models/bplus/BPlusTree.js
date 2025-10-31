@@ -159,19 +159,25 @@ export class BPlusTree {
   }
 
   delete(keyOrRecordNum) {
+    console.log(`Attempting to delete: ${keyOrRecordNum}`);
     try {
       const key = this.getKeyFromRecord(keyOrRecordNum);
-      if (key === null) {
+      console.log(`Resolved key for deletion: ${key}`);
+      if (key === null)
+      {
         throw new Error('Invalid key or record number');
       }
 
       const result = this.root.delete(key);
+      console.log("hmwt nafsy 1");
       const deletedKey = result?.needsMerge ? result.deletedKey : result;
       
       this.adjustEmptyRoot();
-
-      if (this.mode === TreeMode.CSV && typeof keyOrRecordNum === 'number') {
+      console.log("hmwt nafsy 2");
+      if (this.mode === TreeMode.CSV && typeof keyOrRecordNum === 'number')
+      {
         this.recordManager.deleteRecord(keyOrRecordNum);
+        console.log("hmwt nafsy 3");
       }
       
       return deletedKey;
