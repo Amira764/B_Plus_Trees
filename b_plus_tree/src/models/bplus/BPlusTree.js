@@ -51,6 +51,7 @@ export class BPlusTree {
       throw new Error('Invalid key: must be a number');
     }
     
+    console.log("root type:", typeof(this.root));
     const result = this.root.delete(numericKey);
     const deletedKey = result?.needsMerge ? result.deletedKey : result;
     

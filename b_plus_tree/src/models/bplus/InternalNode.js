@@ -46,7 +46,7 @@ export class InternalNode {
     return null;
   }
 
-  /**
+/**
    * Deletes a key from the subtree rooted at this node.
    * @param {number} key - The key to delete.
    * @returns {number|object|undefined} - The deleted key, an object {deletedKey, needsMerge}, or undefined if not found.
@@ -58,14 +58,75 @@ export class InternalNode {
     const result = this.children[idx].delete(key);
     const deletedKey = result?.needsMerge ? result.deletedKey : result;
 
+    // =================================================================
+    // *** FIX: The order of these two blocks has been swapped. ***
+    // We MUST rebalance the child (merge/borrow) *before*
+    // we try to find a replacement key.
+    // =================================================================
+
+    // 1. HANDLE CHILD UNDERFLOW (MERGE/BORROW) - This must run FIRST
+    if (result?.needsMerge) {
+      const child = this.children[idx];
+      
+      const isLeaf = child instanceof LeafNode;
+      const minSize = Math.ceil(child.order / 2);
+      const currentSize = isLeaf ? child.keys.length : child.children.length;
+
+      if (currentSize < minSize) {
+        let borrowed = false;
+        
+        // Try to borrow from right sibling
+        if (idx < this.children.length - 1) {
+          const rightSibling = this.children[idx + 1];
+          const siblingSize = isLeaf ? rightSibling.keys.length : rightSibling.children.length;
+          if (siblingSize > minSize) {
+            child.borrowFromSibling(this, idx + 1, idx);
+            borrowed = true;
+          }
+        }
+        
+        // Try to borrow from left sibling
+        if (!borrowed && idx > 0) {
+          const leftSibling = this.children[idx - 1];
+          const siblingSize = isLeaf ? leftSibling.keys.length : leftSibling.children.length;
+          if (siblingSize > minSize) {
+            child.borrowFromSibling(this, idx - 1, idx);
+            borrowed = true;
+          }
+        }
+        
+        // If borrowing failed, merge
+        if (!borrowed) {
+          if (idx < this.children.length - 1) {
+            // Merge with right sibling
+            child.merge(this, idx + 1, idx);
+          } else if (idx > 0) {
+            // Merge with left sibling
+            child.merge(this, idx - 1, idx);
+          }
+        }
+      }
+    }
+
+    // 2. UPDATE INTERNAL KEYS - This runs SECOND, on the *balanced* tree
     // If a key was deleted, we might need to update our own keys
     if (deletedKey !== undefined) {
       const keyIdx = this.keys.indexOf(deletedKey);
       if (keyIdx !== -1) {
         // If we find the deleted key, replace it with the smallest key from its right subtree
         if (keyIdx + 1 < this.children.length) {
+          // Now this call is safe, as the children are balanced
           const smallestKey = this.findSmallestKey(this.children[keyIdx + 1]);
-          this.keys[keyIdx] = smallestKey;
+          console.log("Replacing key", this.keys[keyIdx], "with smallest key from right subtree:", smallestKey);
+          
+          // Check if smallestKey is still valid (it might be undefined if the right child merged and became empty, e.g. root)
+          if (smallestKey !== undefined) {
+             this.keys[keyIdx] = smallestKey;
+          } else {
+             // This case can happen if the right child was merged *away*
+             this.keys.splice(keyIdx, 1);
+          }
+         
         } else {
           // If no right subtree, just remove the key
           this.keys.splice(keyIdx, 1);
@@ -73,55 +134,7 @@ export class InternalNode {
       }
     }
 
-    // Handle child underflow (merge or borrow)
-    if (result?.needsMerge) {
-      const child = this.children[idx];
-      const minSize = Math.ceil(child.order / 2);
-      
-      let borrowed = false;
-      
-      // Try to borrow from right sibling
-      if (idx < this.children.length - 1) {
-        const rightSibling = this.children[idx + 1];
-        let canBorrow = false;
-        if (rightSibling instanceof LeafNode) {
-          canBorrow = rightSibling.keys.length > minSize;
-        } else {
-          canBorrow = rightSibling.children.length > minSize;
-        }
-        if (canBorrow) {
-          child.borrowFromSibling(this, idx + 1, idx);
-          borrowed = true;
-        }
-      }
-      
-      // Try to borrow from left sibling
-      if (!borrowed && idx > 0) {
-        const leftSibling = this.children[idx - 1];
-        let canBorrow = false;
-        if (leftSibling instanceof LeafNode) {
-          canBorrow = leftSibling.keys.length > minSize;
-        } else {
-          canBorrow = leftSibling.children.length > minSize;
-        }
-        if (canBorrow) {
-          child.borrowFromSibling(this, idx - 1, idx);
-          borrowed = true;
-        }
-      }
-      
-      // If borrowing failed, merge
-      if (!borrowed) {
-        if (idx < this.children.length - 1) {
-          // Merge with right sibling
-          child.merge(this, idx + 1, idx);
-        } else if (idx > 0) {
-          // Merge with left sibling
-          child.merge(this, idx - 1, idx);
-        }
-      }
-    }
-
+    // 3. CHECK FOR SELF-UNDERFLOW
     // Check if this node itself is now underflowing
     const minChildren = Math.ceil(this.order / 2);
     if (this.children.length < minChildren) {
@@ -169,12 +182,22 @@ export class InternalNode {
    * @param {InternalNode|LeafNode} node - The node to start the search from.
    * @returns {number} - The smallest key.
    */
-  findSmallestKey(node) {
+  findSmallestKey(node)
+  {
+    // If the node itself is invalid (e.g., merged away), return undefined
+    if (!node) {
+      return undefined;
+    }
+    
     // Keep traversing to the leftmost child until a leaf is reached
-    while (!(node instanceof LeafNode)) {
+    while (node && !(node instanceof LeafNode))
+    {
       node = node.children[0];
     }
-    return node.keys[0]; // The smallest key is the first key in the leftmost leaf
+    
+    // If node is a valid leaf, return its first key.
+    // If it's an empty leaf (which *shouldn't* happen if logic is correct, but as a safeguard), it will return undefined.
+    return node?.keys[0]; // The smallest key is the first key in the leftmost leaf
   }
 
   /**

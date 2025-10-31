@@ -56,6 +56,7 @@ export class LeafNode {
    * @returns {number|object|undefined} - The deleted key, an object {deletedKey, needsMerge}, or undefined if not found.
    */
   delete(key) {
+    console.log("LeafNode.delete called with key:", key);
     const idx = this.keys.findIndex(k => k === key);
     if (idx !== -1) {
       const deletedKey = this.keys[idx];

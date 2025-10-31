@@ -227,7 +227,7 @@ export class FileIndexManager {
       return false;
     }
 
-    presentInAnyBlock = false;
+    let presentInAnyBlock = false;
     for (const block of this.blocks)
     {
       const found = block.records.findLast(
