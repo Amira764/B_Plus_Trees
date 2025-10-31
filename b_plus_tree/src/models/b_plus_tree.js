@@ -9,7 +9,11 @@ export class BPlusTree {
   }
 
   insert(key, pointer) {
-    const result = this.root.insert(key, pointer);
+    const numericKey = Number(key);
+    if (isNaN(numericKey)) {
+      throw new Error('Invalid key: must be a number');
+    }
+    const result = this.root.insert(numericKey, pointer);
     if (result) {
       const { newKey, newNode } = result;
       const newRoot = new InternalNode(this.orderInternal);
@@ -20,14 +24,39 @@ export class BPlusTree {
   }
 
   delete(key) {
-    this.root.delete(key);
-    if (this.root instanceof InternalNode && this.root.children.length === 1) {
-      this.root = this.root.children[0];
+    const numericKey = Number(key);
+    if (isNaN(numericKey)) {
+      throw new Error('Invalid key: must be a number');
     }
+    
+    const result = this.root.delete(numericKey);
+    const deletedKey = result?.needsMerge ? result.deletedKey : result;
+    
+    // Special handling for root
+    if (this.root instanceof InternalNode) {
+      // If root has only one child, make that child the new root
+      if (this.root.children.length === 1) {
+        this.root = this.root.children[0];
+      }
+      // If root is empty and not a leaf, make its only child the new root
+      else if (this.root.keys.length === 0 && !(this.root instanceof LeafNode)) {
+        this.root = this.root.children[0];
+      }
+      // If root is a leaf node and empty, reset the tree
+      else if (this.root instanceof LeafNode && this.root.keys.length === 0) {
+        this.root = new LeafNode(this.orderLeaf);
+      }
+    }
+    
+    return deletedKey;
   }
 
   search(key) {
-    return this.root.search(key);
+    const numericKey = Number(key);
+    if (isNaN(numericKey)) {
+      throw new Error('Invalid key: must be a number');
+    }
+    return this.root.search(numericKey);
   }
 
   /* ==========================================================
@@ -113,11 +142,122 @@ class InternalNode {
   delete(key) {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
-    this.children[idx].delete(key);
+    
+    const result = this.children[idx].delete(key);
+    const deletedKey = result?.needsMerge ? result.deletedKey : result;
 
-    if (this.children[idx].keys.length === 0) {
-      this.children.splice(idx, 1);
-      if (idx > 0) this.keys.splice(idx - 1, 1);
+    // If a key was deleted and it exists in the internal nodes, update them
+    if (deletedKey !== undefined) {
+      // Find the key in current node's keys
+      const keyIdx = this.keys.indexOf(deletedKey);
+      if (keyIdx !== -1) {
+        // If we find the key in this node, replace it with the smallest key from the right subtree
+        if (idx + 1 < this.children.length) {
+          const smallestKey = this.findSmallestKey(this.children[idx + 1]);
+          this.keys[keyIdx] = smallestKey;
+        } else {
+          // If no right subtree, remove the key
+          this.keys.splice(keyIdx, 1);
+        }
+      }
+    }
+
+    // Handle children that need merging
+    if (result?.needsMerge) {
+      const child = this.children[idx];
+      const minChildren = Math.ceil(child instanceof LeafNode ? child.order / 2 : child.order / 2);
+      
+      // Try to borrow from siblings first
+      let borrowed = false;
+      
+      // Try right sibling
+      if (idx < this.children.length - 1) {
+        const rightSibling = this.children[idx + 1];
+        if (rightSibling.children?.length > minChildren || rightSibling.keys.length > minChildren) {
+          child.borrowFromSibling(this, idx + 1);
+          borrowed = true;
+        }
+      }
+      
+      // Try left sibling if right borrow failed
+      if (!borrowed && idx > 0) {
+        const leftSibling = this.children[idx - 1];
+        if (leftSibling.children?.length > minChildren || leftSibling.keys.length > minChildren) {
+          child.borrowFromSibling(this, idx - 1);
+          borrowed = true;
+        }
+      }
+      
+      // If borrowing failed, merge with a sibling
+      if (!borrowed) {
+        if (idx < this.children.length - 1) {
+          // Merge with right sibling
+          child.merge(this, idx + 1);
+        } else if (idx > 0) {
+          // Merge with left sibling
+          child.merge(this, idx - 1);
+        }
+      }
+    }
+
+    // Check if this node needs to be merged
+    const minChildren = Math.ceil(this.order / 2);
+    if (this.children.length < minChildren) {
+      return { deletedKey, needsMerge: true };
+    }
+
+    return deletedKey;
+  }
+
+  merge(parent, siblingIdx) {
+    const sibling = parent.children[siblingIdx];
+    const parentKey = parent.keys[siblingIdx > 0 ? siblingIdx - 1 : siblingIdx];
+
+    if (siblingIdx > 0) {
+      // Merge with left sibling
+      sibling.keys.push(parentKey);
+      sibling.keys.push(...this.keys);
+      sibling.children.push(...this.children);
+    } else {
+      // Merge with right sibling
+      this.keys.push(parentKey);
+      this.keys.push(...sibling.keys);
+      this.children.push(...sibling.children);
+      parent.children[siblingIdx] = this;
+    }
+
+    // Remove the used parent key and the empty node
+    parent.keys.splice(siblingIdx > 0 ? siblingIdx - 1 : siblingIdx, 1);
+    parent.children.splice(siblingIdx > 0 ? siblingIdx : siblingIdx + 1, 1);
+  }
+
+  findSmallestKey(node) {
+    while (!(node instanceof LeafNode)) {
+      node = node.children[0];
+    }
+    return node.keys[0];
+  }
+
+  borrowFromSibling(parent, siblingIdx) {
+    const sibling = parent.children[siblingIdx];
+    if (siblingIdx > 0) {
+      // Borrow from left sibling
+      const siblingKey = sibling.keys.pop();
+      const siblingChild = sibling.children.pop();
+      const parentKey = parent.keys[siblingIdx - 1];
+      
+      this.keys.unshift(parentKey);
+      this.children.unshift(siblingChild);
+      parent.keys[siblingIdx - 1] = siblingKey;
+    } else {
+      // Borrow from right sibling
+      const siblingKey = sibling.keys.shift();
+      const siblingChild = sibling.children.shift();
+      const parentKey = parent.keys[siblingIdx];
+      
+      this.keys.push(parentKey);
+      this.children.push(siblingChild);
+      parent.keys[siblingIdx] = siblingKey;
     }
   }
 
@@ -172,10 +312,61 @@ class LeafNode {
   }
 
   delete(key) {
-    const idx = this.keys.indexOf(key);
+    const idx = this.keys.findIndex(k => k === key);
     if (idx !== -1) {
+      const deletedKey = this.keys[idx];
       this.keys.splice(idx, 1);
       this.pointers.splice(idx, 1);
+
+      // Check if node needs to be merged (less than ceil(order/2) keys)
+      const minKeys = Math.ceil(this.order / 2);
+      if (this.keys.length < minKeys) {
+        return { deletedKey, needsMerge: true };
+      }
+      
+      return deletedKey;  // Return the deleted key so parent nodes can update
+    }
+    return undefined;
+  }
+
+  merge(parent, siblingIdx) {
+    const sibling = parent.children[siblingIdx];
+    const parentKeyIdx = siblingIdx > 0 ? siblingIdx - 1 : siblingIdx;
+    
+    if (siblingIdx > 0) {
+      // Merge with left sibling
+      sibling.keys.push(...this.keys);
+      sibling.pointers.push(...this.pointers);
+      sibling.next = this.next;
+    } else {
+      // Merge with right sibling
+      this.keys.push(...sibling.keys);
+      this.pointers.push(...sibling.pointers);
+      this.next = sibling.next;
+      parent.children[siblingIdx] = this;
+    }
+    
+    // Remove the separator key and the empty node from parent
+    parent.keys.splice(parentKeyIdx, 1);
+    parent.children.splice(siblingIdx > 0 ? siblingIdx : siblingIdx + 1, 1);
+  }
+
+  borrowFromSibling(parent, siblingIdx) {
+    const sibling = parent.children[siblingIdx];
+    if (siblingIdx > 0) {
+      // Borrow from left sibling
+      const siblingKey = sibling.keys.pop();
+      const siblingPointer = sibling.pointers.pop();
+      this.keys.unshift(siblingKey);
+      this.pointers.unshift(siblingPointer);
+      parent.keys[siblingIdx - 1] = this.keys[0];
+    } else {
+      // Borrow from right sibling
+      const siblingKey = sibling.keys.shift();
+      const siblingPointer = sibling.pointers.shift();
+      this.keys.push(siblingKey);
+      this.pointers.push(siblingPointer);
+      parent.keys[siblingIdx] = sibling.keys[0];
     }
   }
 
