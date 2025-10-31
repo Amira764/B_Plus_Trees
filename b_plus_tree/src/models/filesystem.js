@@ -63,7 +63,7 @@ export class FileIndexManager {
     const recordData = {
       NAME: record.name || "",
       SSN: ssn,
-      DEPARTMENTCODE: record.departmentcode || "",
+      DEPARTMENTCODE: record.department || "",
       ADDRESS: record.address || "",
       PHONE: record.phone || "",
       BIRTHDATE: record.birthdate || "",
