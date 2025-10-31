@@ -19,6 +19,12 @@ const CsvHandler = () => {
       const text = ev.target.result;
       fileIndexRef.current = new FileIndexManager();
       fileIndexRef.current.load_csv(text);
+
+      const toInsert = Math.min(10, fileIndexRef.current.allRecords.length);
+      for (let i = 0; i < toInsert; i++) {
+        fileIndexRef.current.insert_record(i);
+      }
+      
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
