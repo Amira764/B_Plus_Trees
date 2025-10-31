@@ -11,7 +11,7 @@
 .uploadButton {
   display: inline-block;
   padding: 10px 18px;
-  background: #007bff;
+  background: #5aadabff;
   color: white;
   border-radius: 6px;
   cursor: pointer;
@@ -25,16 +25,42 @@
   flex-wrap: wrap;
 }
 
+.recordForm {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fb;
+  border-radius: 8px;
+  border: 1px solid #e6e9ec;
+}
+
+.recordForm h3 {
+  margin: 0 0 16px 0;
+  color: #2d3748;
+}
+
+.formFields {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .recordInput {
   padding: 8px 10px;
   width: 150px;
   border: 1px solid #ddd;
   border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.recordInput:focus {
+  border-color: #4299e1;
+  outline: none;
 }
 
 .actionButton {
   padding: 8px 14px;
-  background: #28a745;
+  background: #bb04afff;
   color: white;
   border: none;
   border-radius: 6px;
@@ -42,7 +68,7 @@
 }
 
 .deleteButton {
-  background: #dc3545;
+  background: #e91e63;
 }
 
 .previewButton {

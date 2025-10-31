@@ -20,9 +20,16 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
     const dy = 150;
 
     // Create hierarchy
-    const hierarchy = d3.hierarchy(tree.root, (node) =>
-      node.children ? node.children : null
-    );
+    const hierarchy = d3.hierarchy(tree.root, (node) => {
+      // Only include children if they exist and have valid keys/pointers
+      if (node.children) {
+        return node.children.filter(child => 
+          child && child.keys && child.keys.length > 0 && 
+          (child.pointers || child.children)
+        );
+      }
+      return null;
+    });
     const layout = d3.tree().nodeSize([dx, dy]);
     layout(hierarchy);
 
@@ -31,29 +38,50 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       .attr("transform", `translate(${width / 2}, 60)`);
 
     // Calculate node widths based on content
+    // Fixed width for each key block
+    const KEY_BLOCK_WIDTH = 60;
+    const POINTER_GAP = 10;
+    
     const getNodeWidth = (node) => {
-      const keysText = node.keys.join(", ");
-      return Math.max(80, 40 + keysText.length * 8);
+      // Total width is number of keys * block width + gaps between them
+      return node.keys.length * KEY_BLOCK_WIDTH + (node.keys.length - 1) * POINTER_GAP;
     };
 
-    // --- LINKS with curved paths and animations
+    // --- LINKS with direct pointer lines
     const links = g.selectAll(".link")
       .data(hierarchy.links())
       .join("path")
       .attr("class", "link")
       .attr("fill", "none")
       .attr("stroke", "#64748b")
-      .attr("stroke-width", 2.5)
+      .attr("stroke-width", 2)
       .attr("d", (d) => {
-        const sourceY = d.source.y + 25;
-        const targetY = d.target.y - 25;
+        const sourceNode = d.source;
+        const targetNode = d.target;
+        
+        // Find the index of this child among its siblings
+        const childIndex = sourceNode.children.indexOf(targetNode);
+        const numChildren = sourceNode.children.length;
+        
+        // Calculate source point based on child's position
+        const sourceWidth = getNodeWidth(sourceNode.data);
+        const segmentWidth = sourceWidth / numChildren;
+        const sourceX = sourceNode.x - sourceWidth/2 + (childIndex + 0.5) * segmentWidth;
+        const sourceY = sourceNode.y + 25;
+
+        // Calculate target point
+        const targetWidth = getNodeWidth(targetNode.data);
+        const targetX = targetNode.x;
+        const targetY = targetNode.y - 25;
+
+        // Create a gentle curve
         const midY = (sourceY + targetY) / 2;
         
         return `
-          M${d.source.x},${sourceY}
-          C${d.source.x},${midY}
-           ${d.target.x},${midY}
-           ${d.target.x},${targetY}
+          M${sourceX},${sourceY}
+          C${sourceX},${midY}
+           ${targetX},${midY}
+           ${targetX},${targetY}
         `;
       })
       .attr("opacity", 0)
@@ -93,10 +121,10 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       .attr("y2", "100%");
     leafGradient.append("stop")
       .attr("offset", "0%")
-      .attr("style", "stop-color:#10b981;stop-opacity:1");
+      .attr("style", "stop-color:#bb04afff;stop-opacity:1");
     leafGradient.append("stop")
       .attr("offset", "100%")
-      .attr("style", "stop-color:#059669;stop-opacity:1");
+      .attr("style", "stop-color:#a00396;stop-opacity:1");
 
     // Gradient for internal nodes
     const internalGradient = defs.append("linearGradient")
@@ -107,38 +135,81 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       .attr("y2", "100%");
     internalGradient.append("stop")
       .attr("offset", "0%")
-      .attr("style", "stop-color:#3b82f6;stop-opacity:1");
+      .attr("style", "stop-color:#5aadabff;stop-opacity:1");
     internalGradient.append("stop")
       .attr("offset", "100%")
-      .attr("style", "stop-color:#2563eb;stop-opacity:1");
+      .attr("style", "stop-color:#4d9493;stop-opacity:1");
 
-    // Add rectangles with animations
-    nodes
-      .append("rect")
-      .attr("class", "node-rect")
-      .attr("rx", 12)
-      .attr("x", (d) => -getNodeWidth(d.data) / 2)
-      .attr("y", -25)
-      .attr("width", (d) => getNodeWidth(d.data))
-      .attr("height", 50)
-      .attr("fill", (d) => d.data.pointers ? "url(#leafGradient)" : "url(#internalGradient)")
-      .attr("stroke", (d) => d.data.pointers ? "#065f46" : "#1e40af")
-      .attr("stroke-width", 2)
-      .style("filter", "drop-shadow(0 4px 6px rgba(0,0,0,0.15))")
-      .attr("opacity", 0)
-      .attr("transform", "scale(0)")
-      .transition()
-      .delay((_, i) => i * 80)
-      .duration(600)
-      .ease(d3.easeBackOut)
-      .attr("opacity", 1)
-      .attr("transform", "scale(1)");
+    // Create individual blocks for each key
+    nodes.each(function(d) {
+      const node = d3.select(this);
+      const numKeys = d.data.keys.length;
+      const isLeaf = d.data.pointers;
+      const baseX = -getNodeWidth(d.data) / 2;
+
+      // Create blocks for each key
+      d.data.keys.forEach((key, i) => {
+        const blockX = baseX + i * (KEY_BLOCK_WIDTH + POINTER_GAP);
+        
+        // Add the block rectangle
+        node.append("rect")
+          .attr("class", "key-block")
+          .attr("x", blockX)
+          .attr("y", -25)
+          .attr("width", KEY_BLOCK_WIDTH)
+          .attr("height", 50)
+          .attr("rx", 0) // Remove rounded corners
+          .attr("fill", isLeaf ? "url(#leafGradient)" : "url(#internalGradient)")
+          .attr("stroke", isLeaf ? "#960391" : "#4d9493")
+          .attr("stroke-width", 2)
+          .style("filter", "drop-shadow(0 4px 6px rgba(0,0,0,0.15))")
+          .attr("opacity", 0)
+          .transition()
+          .delay(i * 100)
+          .duration(600)
+          .ease(d3.easeBackOut)
+          .attr("opacity", 1);
+
+        // Add key text
+        node.append("text")
+          .attr("x", blockX + KEY_BLOCK_WIDTH/2)
+          .attr("y", 0)
+          .attr("text-anchor", "middle")
+          .attr("dy", "0.35em")
+          .style("fill", "white")
+          .style("font-weight", "700")
+          .style("font-size", "15px")
+          .style("text-shadow", "0 1px 2px rgba(0,0,0,0.3)")
+          .text(key)
+          .attr("opacity", 0)
+          .transition()
+          .delay(i * 100 + 200)
+          .duration(400)
+          .attr("opacity", 1);
+
+        // Add connecting lines between blocks in the same node
+        if (i < numKeys - 1) {
+          node.append("line")
+            .attr("x1", blockX + KEY_BLOCK_WIDTH)
+            .attr("y1", 0)
+            .attr("x2", blockX + KEY_BLOCK_WIDTH + POINTER_GAP)
+            .attr("y2", 0)
+            .attr("stroke", isLeaf ? "#960391" : "#4d9493")
+            .attr("stroke-width", 2)
+            .attr("opacity", 0)
+            .transition()
+            .delay(i * 100 + 300)
+            .duration(400)
+            .attr("opacity", 1);
+        }
+      });
+    });
 
     // Add node type badge
     nodes
       .append("circle")
-      .attr("cx", (d) => -getNodeWidth(d.data) / 2 + 15)
-      .attr("cy", -25 + 12)
+      .attr("cx", (d) => -getNodeWidth(d.data) / 2 - 20) // Move badge to left of first block
+      .attr("cy", 0)
       .attr("r", 8)
       .attr("fill", "rgba(255,255,255,0.3)")
       .attr("opacity", 0)
@@ -149,8 +220,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
 
     nodes
       .append("text")
-      .attr("x", (d) => -getNodeWidth(d.data) / 2 + 15)
-      .attr("y", -25 + 12)
+      .attr("x", (d) => -getNodeWidth(d.data) / 2 - 20) // Move badge text to match circle
+      .attr("y", 0)
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
       .style("fill", "white")
@@ -161,22 +232,6 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       .transition()
       .delay((_, i) => i * 80 + 300)
       .duration(400)
-      .attr("opacity", 1);
-
-    // Add keys text
-    nodes
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", "0.35em")
-      .style("fill", "white")
-      .style("font-weight", "700")
-      .style("font-size", "15px")
-      .style("text-shadow", "0 1px 2px rgba(0,0,0,0.3)")
-      .text((d) => d.data.keys.join(", ") || "[]")
-      .attr("opacity", 0)
-      .transition()
-      .delay((_, i) => i * 80 + 200)
-      .duration(600)
       .attr("opacity", 1);
 
     // Add key count indicator
@@ -345,11 +400,11 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
         gap: "24px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "20px", height: "20px", background: "linear-gradient(to bottom, #3b82f6, #2563eb)", borderRadius: "4px" }}></div>
+          <div style={{ width: "20px", height: "20px", background: "#5aadabff", borderRadius: "4px" }}></div>
           <span>Internal Nodes (I)</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "20px", height: "20px", background: "linear-gradient(to bottom, #10b981, #059669)", borderRadius: "4px" }}></div>
+          <div style={{ width: "20px", height: "20px", background: "#bb04afff", borderRadius: "4px" }}></div>
           <span>Leaf Nodes (L)</span>
         </div>
       </div>

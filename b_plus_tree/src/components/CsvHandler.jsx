@@ -2,31 +2,26 @@ import { useState, useRef } from "react";
 import Papa from "papaparse";
 import { FileIndexManager } from "../models/filesystem.js";
 import styles from "../styles/CsvHandler.module.css";
-import BPlusTreeVisualizer from "./BPlusTreeVisualizer.jsx";
+import EnhancedBPlusTreeVisualizer from "./BPlusTreeVisualizer.jsx";
 
 const CsvHandler = () => {
-  const [previewVisible, setPreviewVisible] = useState(false);
   const [previewRows, setPreviewRows] = useState([]);
-  const [selectedRecord, setSelectedRecord] = useState(null);
-  const [recordNumInput, setRecordNumInput] = useState("");
   const [detailsText, setDetailsText] = useState("");
   const [treeVersion, setTreeVersion] = useState(0);
-
+  const [previewVisible, setPreviewVisible] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [recordNumInput, setRecordNumInput] = useState("");
   const fileIndexRef = useRef(null);
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target.result;
       fileIndexRef.current = new FileIndexManager();
       fileIndexRef.current.load_csv(text);
-
-      const toInsert = Math.min(10, fileIndexRef.current.allRecords.length);
-      for (let i = 0; i < toInsert; i++) {
-        fileIndexRef.current.insert_record(i);
-      }
 
       Papa.parse(text, {
         header: true,
@@ -37,6 +32,7 @@ const CsvHandler = () => {
           setSelectedRecord(null);
           setRecordNumInput("");
           setDetailsText("");
+          setTreeVersion(v => v + 1);
         },
       });
     };
@@ -66,8 +62,19 @@ const CsvHandler = () => {
       alert(res.message);
       return;
     }
-    fileIndexRef.current.insert_record(res.index);
-    setTreeVersion((v) => v + 1); // 🔄 refresh visualization
+    try {
+      // Get the record data from preview rows
+      const recordData = previewRows[res.index];
+      if (!recordData) {
+        alert("Record not found in CSV data");
+        return;
+      }
+      // Pass the actual record data instead of just the record number
+      fileIndexRef.current.insert_record(recordData);
+      setTreeVersion((v) => v + 1); // 🔄 refresh visualization
+    } catch (error) {
+      alert(`Error adding record: ${error.message}`);
+    }
   };
 
   const handleDeleteRecord = () => {
@@ -117,27 +124,29 @@ const CsvHandler = () => {
         </label>
       </div>
 
-      <div className={styles.actionButtons}>
-        <input
-          type="number"
-          className={styles.recordInput}
-          placeholder="Record # (1-based)"
-          value={recordNumInput}
-          onChange={(e) => setRecordNumInput(e.target.value)}
-        />
-        <button className={styles.actionButton} onClick={handleAddRecord}>
-          Add Record
-        </button>
-        <button
-          className={`${styles.actionButton} ${styles.deleteButton}`}
-          onClick={handleDeleteRecord}
-        >
-          Delete Record
-        </button>
-        <button className={styles.actionButton} onClick={handleDisplayDetails}>
-          Display Details
-        </button>
-      </div>
+      {previewRows.length > 0 && (
+        <div className={styles.actionButtons}>
+          <input
+            type="number"
+            className={styles.recordInput}
+            placeholder="Record # (1-based)"
+            value={recordNumInput}
+            onChange={(e) => setRecordNumInput(e.target.value)}
+          />
+          <button className={styles.actionButton} onClick={handleAddRecord}>
+            Add CSV Record
+          </button>
+          <button
+            className={`${styles.actionButton} ${styles.deleteButton}`}
+            onClick={handleDeleteRecord}
+          >
+            Delete Record
+          </button>
+          <button className={styles.actionButton} onClick={handleDisplayDetails}>
+            Display Details
+          </button>
+        </div>
+      )}
 
       {previewRows.length > 0 && (
         <>
@@ -187,7 +196,7 @@ const CsvHandler = () => {
         </div>
       )}
       {fileIndexRef.current?.bPlusTree && (
-        <BPlusTreeVisualizer
+        <EnhancedBPlusTreeVisualizer
           key={treeVersion}
           tree={fileIndexRef.current.bPlusTree}
         />

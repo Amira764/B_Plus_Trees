@@ -1,7 +1,7 @@
 // filesystem.js
 import { Record } from "./record.js";
 import { Block } from "./block.js";
-import { BPlusTree } from "../models/b_plus_tree.js";
+import { BPlusTree } from "./bplus/BPlusTree.js";
 
 /**
  * FileIndexManager
@@ -16,6 +16,39 @@ export class FileIndexManager {
     this.blocks = [new Block(0)];
     this.allRecords = [];
     this.bPlusTree = this.initialize_tree();
+    this.nextRecordNumber = 1;
+  }
+
+  /**
+   * Creates a new record with the given fields
+   * @param {Object} fields - Record fields (NAME, SSN, etc.)
+   * @returns {Record} The created record
+   */
+  create_record(fields) {
+    // Ensure SSN is provided
+    if (!fields.SSN) {
+      throw new Error("SSN is required");
+    }
+
+    // Ensure SSN has EG- prefix
+    const ssn = fields.SSN.startsWith('EG-') ? fields.SSN : `EG-${fields.SSN}`;
+
+    // Fill in missing fields with defaults
+    const recordData = {
+      NAME: fields.NAME || "",
+      SSN: ssn,
+      DEPARTMENTCODE: fields.DEPARTMENTCODE || "",
+      ADDRESS: fields.ADDRESS || "",
+      PHONE: fields.PHONE || "",
+      BIRTHDATE: fields.BIRTHDATE || "",
+      SEX: fields.SEX || "",
+      JOBCODE: fields.JOBCODE || "",
+      SALARY: fields.SALARY || "0"
+    };
+
+    const record = new Record(recordData, this.nextRecordNumber++);
+    this.allRecords.push(record);
+    return record;
   }
 
   /**
@@ -23,8 +56,6 @@ export class FileIndexManager {
    * Each record is wrapped as a Record instance.
    */
   load_csv(csvText) {
-    this.allRecords = [];
-
     const lines = csvText.trim().split("\n");
     if (lines.length < 2) {
       console.error("CSV file is empty or has no data.");
@@ -32,6 +63,7 @@ export class FileIndexManager {
     }
 
     const headers = lines[0].split(",").map((h) => h.trim());
+    let loadedCount = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -40,29 +72,53 @@ export class FileIndexManager {
         headers.forEach((header, index) => {
           row[header] = values[index] ? values[index].replace(/"/g, "") : "";
         });
-        this.allRecords.push(new Record(row, i));
+        try {
+          this.create_record(row);
+          loadedCount++;
+        } catch (error) {
+          console.error(`Error loading record at line ${i}: ${error.message}`);
+        }
       }
     }
 
-    console.log(`✅ Loaded ${this.allRecords.length} records from CSV.`);
+    console.log(`✅ Loaded ${loadedCount} records from CSV.`);
   }
 
   /**
-   * Initializes the B+ Tree and inserts the first 10 records.
+   * Initializes the B+ Tree in CSV mode
    */
   initialize_tree() {
-    return new BPlusTree(3, 2); // internal=3, leaf=2
+    return new BPlusTree(3, 2, 'csv'); // internal=3, leaf=2, csv mode
   }
 
   /**
-   * Inserts a record into the file blocks and the B+ Tree.
-   * @param {number} recordNum - index of record in allRecords[]
+   * Inserts a new record into the file blocks and B+ Tree.
+   * @param {Record|Object|number} recordOrFields - Record instance, field values, or record number (1-based)
+   * @returns {Record} The inserted record
    */
-  insert_record(recordNum) {
-    const record = this.allRecords[recordNum];
-    if (!record) {
-      console.error(`Record #${recordNum} not found.`);
-      return;
+  insert_record(recordOrFields) {
+    let record;
+    
+    if (typeof recordOrFields === 'number') {
+      // If it's a record number (1-based), get the record from allRecords
+      const recordIndex = recordOrFields - 1;
+      if (recordIndex < 0 || recordIndex >= this.allRecords.length) {
+        throw new Error(`Invalid record number: ${recordOrFields}`);
+      }
+      record = this.allRecords[recordIndex];
+      
+      // Check if this record is already in a block
+      for (const block of this.blocks) {
+        const existingRecord = block.records.find(r => r && r.originalLineNumber === record.originalLineNumber);
+        if (existingRecord) {
+          console.log(`Record ${recordOrFields} is already in the B+ tree`);
+          return record;
+        }
+      }
+    } else if (recordOrFields instanceof Record) {
+      record = recordOrFields;
+    } else {
+      record = this.create_record(recordOrFields);
     }
 
     // find a block that isn't full
@@ -79,41 +135,64 @@ export class FileIndexManager {
       recordIndex: blockToInsert.records.length - 1,
     };
 
-    // Insert into B+ Tree
+    // Insert into B+ Tree using SSN in both modes
     if (this.bPlusTree) {
-      this.bPlusTree.insert(record.ssn, pointer);
+      // Strip "EG-" prefix and convert to number
+      const numericSSN = Number(record.ssn.replace('EG-', ''));
+      if (isNaN(numericSSN)) {
+        throw new Error('Invalid SSN: must be a number after removing EG- prefix');
+      }
+      this.bPlusTree.insert(numericSSN, record.originalLineNumber);
       console.log(
-        `Inserted record (SSN: ${record.ssn}) into B+ Tree → Block ${pointer.blockId}, Slot ${pointer.recordIndex}`
+        `Inserted record (SSN: ${numericSSN}, Line: ${record.originalLineNumber}) into B+ Tree → Block ${pointer.blockId}, Slot ${pointer.recordIndex}`
       );
     } else {
       console.warn("B+ Tree not initialized yet.");
     }
+
+    return record;
   }
 
   /**
-   * Deletes a record by its original CSV line number.
-   * Marks the record deleted in its block and removes from B+ Tree.
+   * Deletes a record by SSN or record number.
+   * @param {string|number} identifier - SSN or record number to delete
+   * @returns {boolean} Whether the deletion was successful
    */
-  delete_record(recordNum) {
-    let deletedSSN = null;
+  delete_record(identifier) {
+    // If identifier is a string (SSN), strip EG- prefix
+    let searchIdentifier = identifier;
+    if (typeof identifier === 'string' && identifier.startsWith('EG-')) {
+      searchIdentifier = Number(identifier.replace('EG-', ''));
+    }
 
+    const numericIdentifier = Number(searchIdentifier);
+    const isSSN = !isNaN(numericIdentifier);
+
+    // First find the record
+    let recordToDelete = null;
     for (const block of this.blocks) {
       for (const rec of block.records) {
-        if (rec.originalLineNumber === recordNum) {
-          deletedSSN = rec.ssn;
-          block.mark_deleted(recordNum);
+        const numericSSN = Number(rec.ssn.replace('EG-', ''));
+        if ((isSSN && numericSSN === numericIdentifier) || 
+            (!isSSN && rec.originalLineNumber === identifier)) {
+          recordToDelete = rec;
+          block.mark_deleted(rec.originalLineNumber);
           console.log(`Marked record with SSN ${rec.ssn} as deleted.`);
           break;
         }
       }
+      if (recordToDelete) break;
     }
 
-    if (deletedSSN && this.bPlusTree) {
-      this.bPlusTree.delete(deletedSSN);
-      console.log(`Deleted SSN ${deletedSSN} from B+ Tree index.`);
-    } else if (!deletedSSN) {
-      console.log(`Record #${recordNum} not found for deletion.`);
-    }
+    if (recordToDelete && this.bPlusTree) {
+      // Delete using record number in CSV mode
+      this.bPlusTree.delete(recordToDelete.originalLineNumber);
+      console.log(`Deleted record ${recordToDelete.originalLineNumber} (SSN: ${recordToDelete.ssn}) from B+ Tree index.`);
+      return true;
+    } 
+    
+    console.log(`Record ${identifier} not found for deletion.`);
+    return false;
   }
 
   /**
