@@ -25,13 +25,14 @@ export class Block {
 
 
   mark_deleted(recordNum) {
+    let found = false;
     for (const record of this.records) {
       if (record.originalLineNumber === recordNum) {
         record.deleted_flag = 1;
-        return true;
+        found = true;
       }
     }
-    return false;
+    return found;
   }
 
 

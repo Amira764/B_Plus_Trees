@@ -51,6 +51,32 @@ export class FileIndexManager {
     return record;
   }
 
+  deep_copy_record(record) {
+    // Ensure SSN is provided
+    if (!record.ssn) {
+      throw new Error("SSN is required");
+    }
+    // Ensure SSN has EG- prefix
+    const ssn = record.ssn.startsWith('EG-') ? record.ssn : `EG-${record.ssn}`;
+
+    // Fill in missing fields with defaults
+    const recordData = {
+      NAME: record.name || "",
+      SSN: ssn,
+      DEPARTMENTCODE: record.departmentCode || "",
+      ADDRESS: record.address || "",
+      PHONE: record.phone || "",
+      BIRTHDATE: record.birthDate || "",
+      SEX: record.sex || "",
+      JOBCODE: record.jobCode || "",
+      SALARY: record.salary || "0"
+    };
+
+    const newRecord = new Record(recordData, record.originalLineNumber);
+    return newRecord;
+  }
+
+
   /**
    * Loads a CSV file containing employee records into memory.
    * Each record is wrapped as a Record instance.
@@ -109,7 +135,7 @@ export class FileIndexManager {
       // Try to find by SSN
       const searchSSN = identifier.startsWith('EG-') ? identifier : `EG-${identifier}`;
       for (const block of this.blocks) {
-        record = block.records.find((rec) => rec.ssn === searchSSN);
+        record = block.records.findLast((rec) => rec.ssn === searchSSN);
         if (record) break;
       }
     }
@@ -140,16 +166,19 @@ export class FileIndexManager {
     }
     else
     {
-      record = structuredClone(this.allRecords[recordOrFields]);
+      record = this.allRecords[recordOrFields];
+      console.log("Inserting record in mode:", record);
       // Prevent duplicates
       for (const block of this.blocks)
       {
-        if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber) && record.deleted_flag === 0)
+        if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
         {
           console.log(`Record ${recordOrFields} is already in the B+ tree`);
           return record;
         }
       }
+      this.allRecords[recordOrFields].deleted_flag = 0;
+      record = this.deep_copy_record(record);
     }
 
     // find or create block
@@ -189,6 +218,8 @@ export class FileIndexManager {
   {
     console.log(`Attempting to delete record: ${identifier}`);
     const recordToDelete = this.get_record_by_identifier(identifier);
+    console.log("Record to delete found:", recordToDelete);
+    this.allRecords[recordToDelete.originalLineNumber-1].deleted_flag = 1;
 
     if (!recordToDelete)
     {
@@ -198,7 +229,7 @@ export class FileIndexManager {
 
     for (const block of this.blocks)
     {
-      const found = block.records.find(
+      const found = block.records.findLast(
         (r) => r.originalLineNumber === recordToDelete.originalLineNumber
       );
       if (found)
@@ -217,7 +248,7 @@ export class FileIndexManager {
         `Deleted record ${recordToDelete.originalLineNumber} (SSN: ${recordToDelete.ssn}) from B+ Tree index.`
       );
     }
-
+    console.log(`Record ${this.allRecords[recordToDelete.originalLineNumber-1]} deletion process completed.`);
     return true;
   }
 
