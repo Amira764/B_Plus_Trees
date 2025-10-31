@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import './App.css';
+// import './App.css';
 import Controls from './components/Controls';
 import TreeVisualizer from './components/TreeVisualizer';
 import InfoPanel from './components/InfoPanel';
 import BPlusTree from './bptree/BPlusTree';
+import CsvHandler from './components/CsvHandler';
+
 
 function App() {
   // persistent tree instance
@@ -69,36 +71,45 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>B+ Tree Visualiser</h1>
-      </header>
-
-      <main className="App-main layout-split">
-        <section className="left-col">
-          <div className="visualiser-wrap">
-            <TreeVisualizer snapshot={snapshots[index]} />
-          </div>
-        </section>
-
-        <aside className="right-panel">
-          <Controls
-            onInsert={handleInsert}
-            onDelete={handleDelete}
-            onSearch={handleSearch}
-            onPrev={handlePrev}
-            onNext={handleNext}
-            onReset={handleReset}
-            onToggleUnique={handleToggleUnique}
-            canPrev={index > 0}
-            canNext={index < snapshots.length - 1}
-          />
-
-          <InfoPanel snapshot={snapshots[index]} />
-        </aside>
-      </main>
+    // Mimo csv
+     <div>
+      <h1>CSV File Handler</h1>
+      <CsvHandler />
     </div>
+
+    // Miro visualiser
+    // <div className="App">
+    //   <header className="App-header">
+    //     <h1>B+ Tree Visualiser</h1>
+    //   </header>
+
+    //   <main className="App-main layout-split">
+    //     <section className="left-col">
+    //       <div className="visualiser-wrap">
+    //         <TreeVisualizer snapshot={snapshots[index]} />
+    //       </div>
+    //     </section>
+
+    //     <aside className="right-panel">
+    //       <Controls
+    //         onInsert={handleInsert}
+    //         onDelete={handleDelete}
+    //         onSearch={handleSearch}
+    //         onPrev={handlePrev}
+    //         onNext={handleNext}
+    //         onReset={handleReset}
+    //         onToggleUnique={handleToggleUnique}
+    //         canPrev={index > 0}
+    //         canNext={index < snapshots.length - 1}
+    //       />
+
+    //       <InfoPanel snapshot={snapshots[index]} />
+    //     </aside>
+    //   </main>
+    // </div>
   );
 }
 
 export default App;
+
+
