@@ -1,14 +1,12 @@
-import { useState } from 'react'
+import CsvHandler from './components/CsvHandler';
 
 function App() {
-
   return (
-    <>
-      <p>
-        Upload the csv file to see B+ Tree visualization.
-      </p>
-    </>
-  )
+    <div>
+      <h1>CSV File Handler</h1>
+      <CsvHandler />
+    </div>
+  );
 }
 
-export default App
+export default App;
