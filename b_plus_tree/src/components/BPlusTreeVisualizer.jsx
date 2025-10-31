@@ -47,6 +47,27 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       return node.keys.length * KEY_BLOCK_WIDTH + (node.keys.length - 1) * POINTER_GAP;
     };
 
+    const levelMap = {};
+    hierarchy.each(d => {
+      if (!levelMap[d.depth]) levelMap[d.depth] = [];
+      levelMap[d.depth].push(d);
+    });
+
+    Object.values(levelMap).forEach(nodesAtLevel => {
+      let currentX = 0;
+      nodesAtLevel.forEach(node => {
+        const nodeWidth = getNodeWidth(node.data);
+        node.x = currentX + nodeWidth / 2;
+        currentX += nodeWidth + 30; // 60px gap between nodes
+      });
+
+      const totalWidth = currentX - 30;
+      const offset = -totalWidth / 2;
+      nodesAtLevel.forEach(node => {
+        node.x += offset;
+      });
+    });
+
     // --- LINKS with direct pointer lines
     const links = g.selectAll(".link")
       .data(hierarchy.links())
