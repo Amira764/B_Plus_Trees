@@ -120,10 +120,13 @@ export class FileIndexManager {
   /**
    * Inserts a record into a block and updates B+ Tree.
    */
-  insert_record(recordOrFields) {
+  insert_record(recordOrFields, mode = false)
+  {
+
     let record;
 
-    if (typeof recordOrFields === 'number') {
+    if (!mode)
+    {
       record = this.get_record_by_identifier(recordOrFields);
       if (!record) throw new Error(`Invalid record number: ${recordOrFields}`);
 
@@ -134,15 +137,25 @@ export class FileIndexManager {
           return record;
         }
       }
-    } else if (recordOrFields instanceof Record) {
-      record = recordOrFields;
-    } else {
-      record = this.create_record(recordOrFields);
+    }
+    else
+    {
+      record = structuredClone(this.allRecords[recordOrFields]);
+      // Prevent duplicates
+      for (const block of this.blocks)
+      {
+        if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber) && record.deleted_flag === 0)
+        {
+          console.log(`Record ${recordOrFields} is already in the B+ tree`);
+          return record;
+        }
+      }
     }
 
     // find or create block
     let blockToInsert = this.blocks.find(b => !b.is_full());
-    if (!blockToInsert) {
+    if (!blockToInsert)
+    {
       blockToInsert = new Block(this.blocks.length);
       this.blocks.push(blockToInsert);
     }
@@ -163,7 +176,7 @@ export class FileIndexManager {
         `Inserted record (SSN: ${numericSSN}, Line: ${record.originalLineNumber}) into B+ Tree → Block ${pointer.blockId}, Slot ${pointer.recordIndex}`
       );
     }
-
+    console.log(`Inserting record: ${record}`, typeof(record));
     return record;
   }
 
@@ -172,7 +185,9 @@ export class FileIndexManager {
    * @param {string|number} identifier - SSN or record number
    * @returns {boolean} Whether deletion succeeded
    */
-  delete_record(identifier) {
+  delete_record(identifier)
+  {
+    console.log(`Attempting to delete record: ${identifier}`);
     const recordToDelete = this.get_record_by_identifier(identifier);
 
     if (!recordToDelete)
@@ -188,7 +203,7 @@ export class FileIndexManager {
       );
       if (found)
       {
-        block.mark_deleted(recordToDelete.ssn);
+        block.mark_deleted(recordToDelete.originalLineNumber);
         console.log(`Marked record with SSN ${recordToDelete.ssn} as deleted.`);
         break;
       }

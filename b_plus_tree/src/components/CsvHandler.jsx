@@ -5,6 +5,7 @@ import styles from "../styles/CsvHandler.module.css";
 import EnhancedBPlusTreeVisualizer from "./BPlusTreeVisualizer.jsx";
 
 const CsvHandler = () => {
+  const [showDetails, setshowDetails] = useState(false);
   const [previewRows, setPreviewRows] = useState([]);
   const [detailsText, setDetailsText] = useState("");
   const [treeVersion, setTreeVersion] = useState(0);
@@ -62,15 +63,10 @@ const CsvHandler = () => {
       alert(res.message);
       return;
     }
-    try {
-      // Get the record data from preview rows
-      const recordData = previewRows[res.index];
-      if (!recordData) {
-        alert("Record not found in CSV data");
-        return;
-      }
+    try
+    {
       // Pass the actual record data instead of just the record number
-      fileIndexRef.current.insert_record(recordData);
+      fileIndexRef.current.insert_record(res.index, true);
       setTreeVersion((v) => v + 1); // 🔄 refresh visualization
     } catch (error) {
       alert(`Error adding record: ${error.message}`);
@@ -87,7 +83,9 @@ const CsvHandler = () => {
     setTreeVersion((v) => v + 1); // 🔄 refresh visualization
   };
 
-  const handleDisplayDetails = () => {
+  const handleDisplayDetails = () =>
+  {
+    setshowDetails(!showDetails);
     if (!fileIndexRef.current) {
       alert("No CSV loaded.");
       return;
@@ -189,7 +187,7 @@ const CsvHandler = () => {
         </>
       )}
 
-      {detailsText && (
+      {detailsText && showDetails && (
         <div className={styles.detailsArea}>
           <h4>Filesystem Blocks Summary</h4>
           <pre>{detailsText}</pre>
