@@ -63,12 +63,12 @@ export class FileIndexManager {
     const recordData = {
       NAME: record.name || "",
       SSN: ssn,
-      DEPARTMENTCODE: record.departmentCode || "",
+      DEPARTMENTCODE: record.departmentcode || "",
       ADDRESS: record.address || "",
       PHONE: record.phone || "",
-      BIRTHDATE: record.birthDate || "",
+      BIRTHDATE: record.birthdate || "",
       SEX: record.sex || "",
-      JOBCODE: record.jobCode || "",
+      JOBCODE: record.jobcode || "",
       SALARY: record.salary || "0"
     };
 
