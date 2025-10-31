@@ -1,5 +1,9 @@
-import { LeafNode } from './LeafNode';
+import { LeafNode } from './LeafNode.js';
 
+/**
+ * Represents an Internal Node in the B+ Tree.
+ * Internal nodes store keys to guide the search and pointers to child nodes.
+ */
 export class InternalNode {
   constructor(order) {
     this.order = order; // p = max number of pointers (children)
@@ -7,278 +11,211 @@ export class InternalNode {
     this.children = [];
   }
 
-  getInsertIndex(key) {
+  /**
+   * Inserts a key-pointer pair into the subtree rooted at this node.
+   * @param {number} key - The key to insert.
+   * @param {*} pointer - The data pointer associated with the key.
+   * @returns {object|null} - An object with {newKey, newNode} if a split occurred, otherwise null.
+   */
+  insert(key, pointer) {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
-    return idx;
-  }
-
-  insertKeyAndChild(key, node, index) {
-    this.keys.splice(index, 0, key);
-    this.children.splice(index + 1, 0, node);
-  }
-
-  split() {
-    const mid = Math.floor(this.keys.length / 2);
-    const newKey = this.keys[mid];
-    const right = new InternalNode(this.order);
-
-    right.keys = this.keys.splice(mid + 1);
-    right.children = this.children.splice(mid + 1);
-    this.keys.splice(mid); // Middle key goes up to parent
-
-    return { newKey, newNode: right };
-  }
-
-  needsSplit() {
-    return this.children.length > this.order;
-  }
-
-  insert(key, pointer) {
-    const idx = this.getInsertIndex(key);
+    
+    // Recursively call insert on the appropriate child
     const result = this.children[idx].insert(key, pointer);
 
+    // If the child split, we need to add the new key and child
     if (result) {
-      this.insertKeyAndChild(result.newKey, result.newNode, idx);
+      const { newKey, newNode } = result;
+      this.keys.splice(idx, 0, newKey);
+      this.children.splice(idx + 1, 0, newNode);
     }
 
-    if (this.needsSplit()) {
-      return this.split();
+    // Split this node if it overflows
+    if (this.children.length > this.order) {
+      const mid = Math.floor(this.keys.length / 2);
+      const newKey = this.keys[mid]; // Key to promote
+      const right = new InternalNode(this.order);
+
+      right.keys = this.keys.splice(mid + 1);
+      right.children = this.children.splice(mid + 1);
+      this.keys.splice(mid); // Remove promoted key and keys to the right
+
+      return { newKey, newNode: right };
     }
     return null;
   }
 
-  findLargestKeyInSubtree(node) {
-    let current = node;
-    while (!(current instanceof LeafNode)) {
-      current = current.children[current.children.length - 1];
-    }
-    return current.keys[current.keys.length - 1];
-  }
-
-  getReplacementKey(idx, keyIdx) {
-    // Try right subtree first
-    if (idx + 1 < this.children.length && this.children[idx + 1].keys.length > 0) {
-      return this.findSmallestKey(this.children[idx + 1]);
-    }
-    // Try left subtree
-    if (idx > 0 && this.children[idx - 1].keys.length > 0) {
-      return this.findLargestKeyInSubtree(this.children[idx - 1]);
-    }
-    return null;
-  }
-
-  removeEmptyLeafNode(idx) {
-    const child = this.children[idx];
-    if (idx > 0) {
-      const prevLeaf = this.children[idx - 1];
-      if (prevLeaf instanceof LeafNode) {
-        prevLeaf.next = child.next;
-      }
-    }
-    this.children.splice(idx, 1);
-    if (idx > 0) this.keys.splice(idx - 1, 1);
-  }
-
-  removeEmptyInternalNode(idx, child) {
-    const validChildren = child.children.filter(grandChild => 
-      grandChild && grandChild.keys.length > 0
-    );
-    if (validChildren.length === 0) {
-      this.children.splice(idx, 1);
-      if (idx > 0) this.keys.splice(idx - 1, 1);
-    }
-  }
-
-  cleanupEmptyNodes() {
-    for (let i = this.children.length - 1; i >= 0; i--) {
-      const child = this.children[i];
-      if (!child || child.keys.length === 0) {
-        if (child instanceof LeafNode) {
-          this.removeEmptyLeafNode(i);
-        } else {
-          this.removeEmptyInternalNode(i, child);
-        }
-      }
-    }
-  }
-
+  /**
+   * Deletes a key from the subtree rooted at this node.
+   * @param {number} key - The key to delete.
+   * @returns {number|object|undefined} - The deleted key, an object {deletedKey, needsMerge}, or undefined if not found.
+   */
   delete(key) {
-    const idx = this.getInsertIndex(key);
+    let idx = 0;
+    while (idx < this.keys.length && key >= this.keys[idx]) idx++;
+    
     const result = this.children[idx].delete(key);
     const deletedKey = result?.needsMerge ? result.deletedKey : result;
 
+    // If a key was deleted, we might need to update our own keys
     if (deletedKey !== undefined) {
       const keyIdx = this.keys.indexOf(deletedKey);
       if (keyIdx !== -1) {
-        const replacementKey = this.getReplacementKey(idx, keyIdx);
-        if (replacementKey !== null) {
-          this.keys[keyIdx] = replacementKey;
+        // If we find the deleted key, replace it with the smallest key from its right subtree
+        if (keyIdx + 1 < this.children.length) {
+          const smallestKey = this.findSmallestKey(this.children[keyIdx + 1]);
+          this.keys[keyIdx] = smallestKey;
         } else {
+          // If no right subtree, just remove the key
           this.keys.splice(keyIdx, 1);
         }
       }
     }
 
-    this.cleanupEmptyNodes();
-
-    // Handle children that need merging
+    // Handle child underflow (merge or borrow)
     if (result?.needsMerge) {
-      if (this.handleChildMerging(idx, child) === false) {
-        return { deletedKey, needsMerge: true };
+      const child = this.children[idx];
+      const minSize = Math.ceil(child.order / 2);
+      
+      let borrowed = false;
+      
+      // Try to borrow from right sibling
+      if (idx < this.children.length - 1) {
+        const rightSibling = this.children[idx + 1];
+        let canBorrow = false;
+        if (rightSibling instanceof LeafNode) {
+          canBorrow = rightSibling.keys.length > minSize;
+        } else {
+          canBorrow = rightSibling.children.length > minSize;
+        }
+        if (canBorrow) {
+          child.borrowFromSibling(this, idx + 1, idx);
+          borrowed = true;
+        }
+      }
+      
+      // Try to borrow from left sibling
+      if (!borrowed && idx > 0) {
+        const leftSibling = this.children[idx - 1];
+        let canBorrow = false;
+        if (leftSibling instanceof LeafNode) {
+          canBorrow = leftSibling.keys.length > minSize;
+        } else {
+          canBorrow = leftSibling.children.length > minSize;
+        }
+        if (canBorrow) {
+          child.borrowFromSibling(this, idx - 1, idx);
+          borrowed = true;
+        }
+      }
+      
+      // If borrowing failed, merge
+      if (!borrowed) {
+        if (idx < this.children.length - 1) {
+          // Merge with right sibling
+          child.merge(this, idx + 1, idx);
+        } else if (idx > 0) {
+          // Merge with left sibling
+          child.merge(this, idx - 1, idx);
+        }
       }
     }
 
-    if (this.needsMerging()) {
+    // Check if this node itself is now underflowing
+    const minChildren = Math.ceil(this.order / 2);
+    if (this.children.length < minChildren) {
       return { deletedKey, needsMerge: true };
     }
 
     return deletedKey;
   }
 
-  needsMerging() {
-    const minChildren = Math.ceil(this.order / 2);
-    return this.children.length < minChildren;
-  }
-
-  getMinKeys(node) {
-    return Math.ceil(node.order / 2) - 1;
-  }
-
-  canBorrowFromSibling(sibling) {
-    return sibling && sibling.keys.length > this.getMinKeys(sibling);
-  }
-
-  tryBorrowFromSibling(child, siblingIdx, isRightSibling) {
-    const sibling = this.children[siblingIdx];
-    if (this.canBorrowFromSibling(sibling)) {
-      const oldLength = child.keys.length;
-      child.borrowFromSibling(this, siblingIdx);
-      return child.keys.length > oldLength;
-    }
-    return false;
-  }
-
-  tryMergeWithSibling(child, siblingIdx) {
-    const sibling = this.children[siblingIdx];
-    if (sibling) {
-      const mergedNode = child.merge(this, siblingIdx);
-      return mergedNode && mergedNode.keys.length > 0;
-    }
-    return false;
-  }
-
-  handleChildMerging(idx, child) {
-    if (!child) return false;
-
-    // Try borrowing from right sibling
-    if (idx < this.children.length - 1 && 
-        this.tryBorrowFromSibling(child, idx + 1, true)) {
-      return true;
-    }
-
-    // Try borrowing from left sibling
-    if (idx > 0 && 
-        this.tryBorrowFromSibling(child, idx - 1, false)) {
-      return true;
-    }
-
-    // Try merging with right sibling
-    if (idx < this.children.length - 1 && 
-        this.tryMergeWithSibling(child, idx + 1)) {
-      return true;
-    }
-
-    // Try merging with left sibling
-    if (idx > 0 && 
-        this.tryMergeWithSibling(this.children[idx - 1], idx)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  merge(parent, siblingIdx) {
+  /**
+   * Merges this node with a sibling node.
+   * @param {InternalNode} parent - The parent node.
+   * @param {number} siblingIdx - The index of the sibling in the parent's children array.
+   * @param {number} childIdx - The index of this node in the parent's children array.
+   */
+  merge(parent, siblingIdx, childIdx) {
     const sibling = parent.children[siblingIdx];
-    const isRightSibling = siblingIdx > 0 ? false : true;
-    const parentKey = parent.keys[isRightSibling ? siblingIdx : siblingIdx - 1];
-    const targetNode = isRightSibling ? this : sibling;
-    const sourceNode = isRightSibling ? sibling : this;
-
-    // First push the parent key as it becomes part of the merged node
-    targetNode.keys.push(parentKey);
-
-    // Then merge the keys and children
-    targetNode.keys.push(...sourceNode.keys);
-    targetNode.children.push(...sourceNode.children);
-
-    // Important: Keep only the valid children
-    targetNode.children = targetNode.children.filter(child => child && child.keys.length > 0);
+    const isRightSibling = siblingIdx > childIdx;
     
-    // If merging with right sibling, we need to update the parent's reference
-    if (!isRightSibling) {
-      parent.children[siblingIdx] = targetNode;
-    }
+    // The key from the parent that separates these two nodes
+    const parentKeyIdx = isRightSibling ? childIdx : siblingIdx;
+    const parentKey = parent.keys[parentKeyIdx];
 
-    // Remove the parent key and the empty sibling node
-    const parentKeyIndex = isRightSibling ? siblingIdx : siblingIdx - 1;
-    parent.keys.splice(parentKeyIndex, 1);
-    parent.children.splice(isRightSibling ? siblingIdx + 1 : siblingIdx, 1);
-
-    // Make sure parent keys and children are properly aligned
-    if (parent.children.length - 1 !== parent.keys.length) {
-      parent.keys = parent.keys.slice(0, parent.children.length - 1);
-    }
-
-    return targetNode;
-  }
-
-  borrowFromSibling(parent, siblingIdx) {
-    const sibling = parent.children[siblingIdx];
-    if (!sibling || sibling.keys.length === 0) return false;
-
-    const isRightSibling = siblingIdx > siblingIdx - 1;
-    const parentKeyIdx = isRightSibling ? siblingIdx - 1 : siblingIdx;
-
-    if (!isRightSibling) {
-      // Borrow from left sibling
-      const siblingKey = sibling.keys.pop();
-      const siblingChild = sibling.children.pop();
-      const parentKey = parent.keys[parentKeyIdx];
+    if (isRightSibling) {
+      // Merge right sibling (sibling) into this node (this)
+      this.keys.push(parentKey, ...sibling.keys);
+      this.children.push(...sibling.children);
       
-      if (siblingChild) {
-        this.keys.unshift(parentKey);
-        this.children.unshift(siblingChild);
-        parent.keys[parentKeyIdx] = siblingKey;
-        return true;
-      }
+      // Remove parent key and right sibling
+      parent.keys.splice(parentKeyIdx, 1);
+      parent.children.splice(siblingIdx, 1);
     } else {
-      // Borrow from right sibling
-      const siblingKey = sibling.keys.shift();
-      const siblingChild = sibling.children.shift();
-      const parentKey = parent.keys[parentKeyIdx];
+      // Merge this node (this) into left sibling (sibling)
+      sibling.keys.push(parentKey, ...this.keys);
+      sibling.children.push(...this.children);
       
-      if (siblingChild) {
-        this.keys.push(parentKey);
-        this.children.push(siblingChild);
-        parent.keys[parentKeyIdx] = siblingKey;
-        return true;
-      }
+      // Remove parent key and this node
+      parent.keys.splice(parentKeyIdx, 1);
+      parent.children.splice(childIdx, 1);
     }
-    return false;
   }
 
+  /**
+   * Finds the smallest key in the subtree rooted at the given node.
+   * @param {InternalNode|LeafNode} node - The node to start the search from.
+   * @returns {number} - The smallest key.
+   */
   findSmallestKey(node) {
+    // Keep traversing to the leftmost child until a leaf is reached
     while (!(node instanceof LeafNode)) {
       node = node.children[0];
     }
-    return node.keys[0];
+    return node.keys[0]; // The smallest key is the first key in the leftmost leaf
   }
 
+  /**
+   * Borrows a key and child from a sibling node.
+   * @param {InternalNode} parent - The parent node.
+   * @param {number} siblingIdx - The index of the sibling in the parent's children array.
+   * @param {number} childIdx - The index of this node in the parent's children array.
+   */
+  borrowFromSibling(parent, siblingIdx, childIdx) {
+    const sibling = parent.children[siblingIdx];
+    
+    if (siblingIdx < childIdx) {
+      // Sibling is on the left
+      const siblingKey = sibling.keys.pop();
+      const siblingChild = sibling.children.pop();
+      const parentKey = parent.keys[siblingIdx]; // Parent key is at siblingIdx
+      
+      this.keys.unshift(parentKey);
+      this.children.unshift(siblingChild);
+      parent.keys[siblingIdx] = siblingKey; // New parent key is sibling's popped key
+    } else {
+      // Sibling is on the right
+      const siblingKey = sibling.keys.shift();
+      const siblingChild = sibling.children.shift();
+      const parentKey = parent.keys[childIdx]; // Parent key is at childIdx
+      
+      this.keys.push(parentKey);
+      this.children.push(siblingChild);
+      parent.keys[childIdx] = siblingKey; // New parent key is sibling's shifted key
+    }
+  }
+
+  /**
+   * Searches for a key in the subtree rooted at this node.
+   * @param {number} key - The key to search for.
+   * @returns {*} - The data pointer if found, otherwise null.
+   */
   search(key) {
     let idx = 0;
-    // Use numeric comparison
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
+    // Recursively call search on the appropriate child
     return this.children[idx].search(key);
   }
 }
