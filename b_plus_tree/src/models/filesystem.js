@@ -160,6 +160,7 @@ export class FileIndexManager {
       for (const block of this.blocks) {
         if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber)) {
           console.log(`Record ${recordOrFields} is already in the B+ tree`);
+          alert(`Record ${recordOrFields+1} is already in the B+ tree`);
           return record;
         }
       }
@@ -173,7 +174,8 @@ export class FileIndexManager {
       {
         if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
         {
-          console.log(`Record ${recordOrFields} is already in the B+ tree`);
+          console.log(`Record ${recordOrFields+1} is already in the B+ tree`);
+          alert(`Record ${recordOrFields+1} is already in the B+ tree`);
           return record;
         }
       }
@@ -216,9 +218,7 @@ export class FileIndexManager {
    */
   delete_record(identifier)
   {
-    console.log(`Attempting to delete record: ${identifier}`);
     const recordToDelete = this.get_record_by_identifier(identifier);
-    console.log("Record to delete found:", recordToDelete);
     this.allRecords[recordToDelete.originalLineNumber-1].deleted_flag = 1;
 
     if (!recordToDelete)
@@ -237,6 +237,10 @@ export class FileIndexManager {
         block.mark_deleted(recordToDelete.originalLineNumber);
         console.log(`Marked record with SSN ${recordToDelete.ssn} as deleted.`);
         break;
+      }
+      else
+      {
+        alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
       }
     }
 
