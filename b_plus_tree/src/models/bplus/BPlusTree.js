@@ -45,15 +45,15 @@ export class BPlusTree
 		const deletedKey = result?.needsMerge ? result.deletedKey : (result.deletedKey ?? result);
 		const pointer = result?.pointer ?? undefined;
 
-    // Handle root shrinkage
+    	// Handle root shrinkage
 		if (this.root instanceof InternalNode)
 		{
-      // If root has only one child, make that child the new root
+      		// If root has only one child, make that child the new root
 			if (this.root.children.length === 1)
 			{
 				this.root = this.root.children[0];
 			}
-      // If root is empty (but not a leaf), make its first child the new root
+      		// If root is empty (but not a leaf), make its first child the new root
 			else if (this.root.keys.length === 0 && !(this.root instanceof LeafNode))
 			{
 				this.root = this.root.children[0];
@@ -61,7 +61,7 @@ export class BPlusTree
 		}
 		else if (this.root instanceof LeafNode)
 		{
-      // If root is an empty leaf, reset the tree
+      		// If root is an empty leaf, reset the tree
 			if (this.root.keys.length === 0)
 			{
 				this.root = new LeafNode(this.orderLeaf);

@@ -62,20 +62,8 @@ export class InternalNode
 			{
 				let borrowed = false;
 
-				// Try to borrow from right sibling
-				if (idx < this.children.length - 1)
-				{
-					const rightSibling = this.children[idx + 1];
-					const siblingSize = isLeaf ? rightSibling.keys.length : rightSibling.children.length;
-					if (siblingSize > minSize)
-					{
-						child.borrowFromSibling(this, idx + 1, idx);
-						borrowed = true;
-					}
-				}
-
 				// Try to borrow from left sibling
-				if (!borrowed && idx > 0)
+				if (idx > 0)
 				{
 					const leftSibling = this.children[idx - 1];
 					const siblingSize = isLeaf ? leftSibling.keys.length : leftSibling.children.length;
@@ -86,18 +74,31 @@ export class InternalNode
 					}
 				}
 
+				// Try to borrow from right sibling
+				if (!borrowed && idx < this.children.length - 1)
+				{
+					const rightSibling = this.children[idx + 1];
+					const siblingSize = isLeaf ? rightSibling.keys.length : rightSibling.children.length;
+					if (siblingSize > minSize)
+					{
+						child.borrowFromSibling(this, idx + 1, idx);
+						borrowed = true;
+					}
+				}
+
+
 				// If borrowing failed, merge
 				if (!borrowed)
 				{
-					if (idx < this.children.length - 1)
+					// Try to merge with left sibling
+					if (idx > 0)
 					{
-						// Merge with right sibling
-						child.merge(this, idx + 1, idx);
-					}
-          else if (idx > 0)
-					{
-						// Merge with left sibling
 						child.merge(this, idx - 1, idx);
+					}
+					// Try to merge with right sibling
+					else if (idx < this.children.length - 1)
+					{
+						child.merge(this, idx + 1, idx);
 					}
 				}
 			}
