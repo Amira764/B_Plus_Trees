@@ -32,7 +32,6 @@ export class Record
     this.originalLineNumber = originalLineNumber;
   }
 
-
   to_bytes()
   {
     const pad = (str, len) => String(str || '').padEnd(len).substring(0, len);
@@ -50,7 +49,6 @@ export class Record
       pad(this.deleted_flag, FIELD_LENGTHS.DELETED_FLAG)
     );
   }
-
 
   static from_bytes(byteString)
   {
