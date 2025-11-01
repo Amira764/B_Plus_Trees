@@ -50,6 +50,7 @@ export class InternalNode
 		const pointer = result?.pointer ?? undefined;
 
 		// 1. HANDLE CHILD UNDERFLOW (MERGE/BORROW) - This must run FIRST
+		let mergeHappened = false;
 		if (result?.needsMerge)
 		{
 			const child = this.children[idx];
@@ -86,10 +87,10 @@ export class InternalNode
 					}
 				}
 
-
 				// If borrowing failed, merge
 				if (!borrowed)
 				{
+					mergeHappened = true;
 					// Try to merge with left sibling
 					if (idx > 0)
 					{
@@ -108,7 +109,8 @@ export class InternalNode
 		if (deletedKey !== undefined)
 		{
 			const keyIdx = this.keys.indexOf(deletedKey);
-			if (keyIdx !== -1)
+
+			if (keyIdx !== -1) // Regular case: Key is still in this parent node
 			{
 				if (keyIdx + 1 < this.children.length)
 				{
@@ -127,6 +129,37 @@ export class InternalNode
 				else
 				{
 					this.keys.splice(keyIdx, 1);
+				}
+			}
+			else if (mergeHappened) // Handle edge case where key was pulled down by merge
+			{
+				// The key was removed from this node by the merge.
+				// We must now find it *inside the merged child* and replace it there.
+				const mergedChildIdx = (idx > 0) ? idx - 1 : 0;
+				const mergedChild = this.children[mergedChildIdx];
+
+				if (mergedChild)
+				{
+					const keyIdxInChild = mergedChild.keys.indexOf(deletedKey);
+					if (keyIdxInChild !== -1)
+					{
+						// Found the key that was incorrectly pulled down
+						if (keyIdxInChild + 1 < mergedChild.children.length)
+						{
+							const smallestKey = this.findSmallestKey(mergedChild.children[keyIdxInChild + 1]);
+							console.log("Fixing merged key", mergedChild.keys[keyIdxInChild], "with smallest key:", smallestKey);
+							if (smallestKey !== undefined)
+							{
+								mergedChild.keys[keyIdxInChild] = smallestKey;
+							} else
+							{
+								mergedChild.keys.splice(keyIdxInChild, 1);
+							}
+						} else
+						{
+							mergedChild.keys.splice(keyIdxInChild, 1);
+						}
+					}
 				}
 			}
 		}
