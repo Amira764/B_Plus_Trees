@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import styles from '../styles/CsvHandler.module.css';
 
-const RecordForm = ({ onAddRecord, onDeleteRecord }) => {
+const RecordForm = ({ onAddRecord, onDeleteRecord }) =>
+{
   const [newRecord, setNewRecord] = useState({SSN: ""});
   const [ssnToDelete, setSsnToDelete] = useState("");
 
-  const handleAdd = () => {
-    if (!newRecord.SSN.trim()) {
+  const handleAdd = () =>
+  {
+    if (!newRecord.SSN.trim())
+    {
       alert("SSN is required");
       return;
     }
@@ -14,9 +17,11 @@ const RecordForm = ({ onAddRecord, onDeleteRecord }) => {
     setNewRecord(prev => ({ ...prev, SSN: "" }));
   };
 
-  const handleDelete = () => {
+  const handleDelete = () =>
+  {
     const ssn = ssnToDelete.trim();
-    if (!ssn) {
+    if (!ssn)
+    {
       alert("Enter an SSN to delete");
       return;
     }

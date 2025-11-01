@@ -241,7 +241,8 @@ export class FileIndexManager
   delete_record(identifier)
   {
     const recordToDelete = this.get_record_by_identifier(identifier);
-    if (!recordToDelete) {
+    if (!recordToDelete)
+    {
       console.log(`Record ${identifier} not found for deletion.`);
       return false;
     }
@@ -250,7 +251,8 @@ export class FileIndexManager
     this.allRecords[recordToDelete.originalLineNumber - 1].deleted_flag = 1;
 
     // If we have an index, ask it to delete and return the pointer to the slot
-    if (this.bPlusTree) {
+    if (this.bPlusTree)
+    {
       const numericSSN = Number(recordToDelete.ssn.replace('EG-', ''));
       const result = this.bPlusTree.delete(numericSSN);
 

@@ -4,7 +4,8 @@ import { FileIndexManager } from "../models/filesystem.js";
 import styles from "../styles/CsvHandler.module.css";
 import EnhancedBPlusTreeVisualizer from "./BPlusTreeVisualizer.jsx";
 
-const CsvHandler = () => {
+const CsvHandler = () =>
+{
   const [showDetails, setshowDetails] = useState(false);
   const [previewRows, setPreviewRows] = useState([]);
   const [detailsText, setDetailsText] = useState("");
@@ -14,7 +15,8 @@ const CsvHandler = () => {
   const [recordNumInput, setRecordNumInput] = useState("");
   const fileIndexRef = useRef(null);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e) =>
+  {
     const file = e.target.files?.[0];
     if (!file) return;
     

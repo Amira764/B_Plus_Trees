@@ -1,16 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
-/**
- * Enhanced B+ Tree Visualizer with better animations and clarity
- */
-const EnhancedBPlusTreeVisualizer = ({ tree }) => {
+const EnhancedBPlusTreeVisualizer = ({ tree }) =>
+{
   const svgRef = useRef();
   const [hoveredNode, setHoveredNode] = useState(null);
 
   console.log("Rendering BPlusTreeVisualizer with tree:", tree);
   
-  useEffect(() => {
+  useEffect(() =>
+  {
     if (!tree || !tree.root) return;
 
     const svg = d3.select(svgRef.current);
@@ -22,9 +21,11 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
     const dy = 150;
 
     // Create hierarchy
-    const hierarchy = d3.hierarchy(tree.root, (node) => {
+    const hierarchy = d3.hierarchy(tree.root, (node) =>
+    {
       // Only include children if they exist and have valid keys/pointers
-      if (node.children) {
+      if (node.children)
+      {
         return node.children.filter(child => 
           child && child.keys && child.keys.length > 0 && 
           (child.pointers || child.children)
@@ -44,7 +45,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
     const KEY_BLOCK_WIDTH = 60;
     const POINTER_GAP = 10;
     
-    const getNodeWidth = (node) => {
+    const getNodeWidth = (node) =>
+    {
       // Total width is number of keys * block width + gaps between them
       return node.keys.length * KEY_BLOCK_WIDTH + (node.keys.length - 1) * POINTER_GAP;
     };
@@ -55,12 +57,13 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       levelMap[d.depth].push(d);
     });
 
-    Object.values(levelMap).forEach(nodesAtLevel => {
+    Object.values(levelMap).forEach(nodesAtLevel =>
+    {
       let currentX = 0;
       nodesAtLevel.forEach(node => {
         const nodeWidth = getNodeWidth(node.data);
         node.x = currentX + nodeWidth / 2;
-        currentX += nodeWidth + 30; // 60px gap between nodes
+        currentX += nodeWidth + 30; // 30px gap between nodes
       });
 
       const totalWidth = currentX - 30;
@@ -108,10 +111,12 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
         `;
       })
       .attr("opacity", 0)
-      .attr("stroke-dasharray", function() {
+      .attr("stroke-dasharray", function()
+      {
         return this.getTotalLength();
       })
-      .attr("stroke-dashoffset", function() {
+      .attr("stroke-dashoffset", function()
+      {
         return this.getTotalLength();
       });
 
@@ -164,14 +169,16 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       .attr("style", "stop-color:#4d9493;stop-opacity:1");
 
     // Create individual blocks for each key
-    nodes.each(function(d) {
+    nodes.each(function(d)
+    {
       const node = d3.select(this);
       const numKeys = d.data.keys.length;
       const isLeaf = d.data.pointers;
       const baseX = -getNodeWidth(d.data) / 2;
 
       // Create blocks for each key
-      d.data.keys.forEach((key, i) => {
+      d.data.keys.forEach((key, i) =>
+      {
         const blockX = baseX + i * (KEY_BLOCK_WIDTH + POINTER_GAP);
         
         // Add the block rectangle
@@ -211,7 +218,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
           .attr("opacity", 1);
 
         // Add connecting lines between blocks in the same node
-        if (i < numKeys - 1) {
+        if (i < numKeys - 1)
+        {
           node.append("line")
             .attr("x1", blockX + KEY_BLOCK_WIDTH)
             .attr("y1", 0)
@@ -276,7 +284,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
 
     // Hover effects
     nodes
-      .on("mouseover", function(event, d) {
+      .on("mouseover", function(event, d)
+      {
         d3.select(this).select(".node-rect")
           .transition()
           .duration(200)
@@ -285,7 +294,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
         
         setHoveredNode(d);
       })
-      .on("mouseout", function() {
+      .on("mouseout", function()
+      {
         d3.select(this).select(".node-rect")
           .transition()
           .duration(200)
@@ -297,12 +307,14 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
 
     // Level indicators
     const levels = {};
-    hierarchy.descendants().forEach(d => {
+    hierarchy.descendants().forEach(d =>
+    {
       if (!levels[d.depth]) levels[d.depth] = [];
       levels[d.depth].push(d);
     });
 
-    Object.entries(levels).forEach(([depth, nodesAtLevel]) => {
+    Object.entries(levels).forEach(([depth, nodesAtLevel]) =>
+    {
       const minX = Math.min(...nodesAtLevel.map(n => n.x));
       const maxX = Math.max(...nodesAtLevel.map(n => n.x));
       const avgY = nodesAtLevel[0].y;
@@ -347,7 +359,8 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) => {
       { label: "Total Levels", value: Object.keys(levels).length }
     ];
 
-    infoBox.forEach((item, i) => {
+    infoBox.forEach((item, i) =>
+    {
       const g = info.append("g")
         .attr("transform", `translate(0, ${i * 25})`);
       

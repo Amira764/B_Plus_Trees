@@ -14,8 +14,10 @@ const FIELD_LENGTHS = {
 
 export const RECORD_SIZE = Object.values(FIELD_LENGTHS).reduce((a, b) => a + b, 0);
 
-export class Record {
-  constructor(row, originalLineNumber) {
+export class Record
+{
+  constructor(row, originalLineNumber)
+  {
     this.name = row.NAME;
     this.ssn = row.SSN;
     this.department = row.DEPARTMENTCODE;
@@ -31,7 +33,8 @@ export class Record {
   }
 
 
-  to_bytes() {
+  to_bytes()
+  {
     const pad = (str, len) => String(str || '').padEnd(len).substring(0, len);
 
     return (
@@ -49,8 +52,10 @@ export class Record {
   }
 
 
-  static from_bytes(byteString) {
-    if (byteString.length !== RECORD_SIZE) {
+  static from_bytes(byteString)
+  {
+    if (byteString.length !== RECORD_SIZE)
+    {
       console.error("Invalid byte string length.");
       return null;
     }
@@ -58,7 +63,8 @@ export class Record {
     let offset = 0;
     const record = {};
 
-    for (const [key, len] of Object.entries(FIELD_LENGTHS)) {
+    for (const [key, len] of Object.entries(FIELD_LENGTHS))
+    {
       record[key] = byteString.substring(offset, offset + len).trim();
       offset += len;
     }
@@ -69,7 +75,8 @@ export class Record {
     return record;
   }
 
-  display() {
+  display()
+  {
     const status = this.deleted_flag ? "[DELETED]" : "[Active]";
     console.log(`    ${status}
     SSN: ${this.ssn}

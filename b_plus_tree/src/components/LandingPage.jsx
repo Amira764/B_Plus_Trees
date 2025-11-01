@@ -1,7 +1,8 @@
 import React from 'react';
 import styles from '../styles/LandingPage.module.css';
 
-const LandingPage = ({ onModeSelect }) => {
+const LandingPage = ({ onModeSelect }) =>
+{
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>🌳 B+ Tree Visualization</h1>

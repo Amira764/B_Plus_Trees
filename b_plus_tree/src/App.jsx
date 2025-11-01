@@ -3,16 +3,19 @@ import CsvHandler from './components/CsvHandler';
 import ManualMode from './components/ManualMode';
 import LandingPage from './components/LandingPage';
 
-function App() {
+function App()
+{
   const [mode, setMode] = useState(null);
 
-  if (!mode) {
+  if (!mode)
+  {
     return <LandingPage onModeSelect={setMode} />;
   }
 
   return (
     <div>
-      <div style={{ 
+      <div style= 
+      {{ 
         padding: '1rem', 
         background: '#f8fafc', 
         borderBottom: '1px solid #e2e8f0',
@@ -39,7 +42,9 @@ function App() {
           Change Mode
         </button>
       </div>
-      {mode === 'csv' ? <CsvHandler /> : <ManualMode />}
+      {
+        mode === 'csv' ? <CsvHandler /> : <ManualMode />
+      }
     </div>
   );
 }

@@ -1,11 +1,14 @@
 import styles from '../styles/CsvHandler.module.css';
 
-const FileSystemDetails = ({ blocks }) => {
+const FileSystemDetails = ({ blocks }) =>
+{
   if (!blocks) return null;
 
-  const summary = blocks.map((b, i) => {
+  const summary = blocks.map((b, i) =>
+  {
     const id = b?.blockId ?? i;
-    const recs = (b?.records ?? []).map((r) => {
+    const recs = (b?.records ?? []).map((r) =>
+    {
       if (!r) return null;
       return r.row ?? r.data ?? r.fields ?? r.record ?? r;
     });

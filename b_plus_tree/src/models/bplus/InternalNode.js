@@ -4,8 +4,10 @@ import { LeafNode } from './LeafNode.js';
  * Represents an Internal Node in the B+ Tree.
  * Internal nodes store keys to guide the search and pointers to child nodes.
  */
-export class InternalNode {
-  constructor(order) {
+export class InternalNode
+{
+  constructor(order)
+  {
     this.order = order; // p = max number of pointers (children)
     this.keys = [];     // can have at most (p-1) keys
     this.children = [];
@@ -17,7 +19,8 @@ export class InternalNode {
    * @param {*} pointer - The data pointer associated with the key.
    * @returns {object|null} - An object with {newKey, newNode} if a split occurred, otherwise null.
    */
-  insert(key, pointer, BlockPointer) {
+  insert(key, pointer, BlockPointer)
+  {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
     
@@ -25,14 +28,16 @@ export class InternalNode {
     const result = this.children[idx].insert(key, pointer, BlockPointer);
 
     // If the child split, we need to add the new key and child
-    if (result) {
+    if (result)
+    {
       const { newKey, newNode } = result;
       this.keys.splice(idx, 0, newKey);
       this.children.splice(idx + 1, 0, newNode);
     }
 
     // Split this node if it overflows
-    if (this.children.length > this.order) {
+    if (this.children.length > this.order)
+    {
       const mid = Math.floor(this.keys.length / 2);
       const newKey = this.keys[mid]; // Key to promote
       const right = new InternalNode(this.order);
@@ -51,7 +56,8 @@ export class InternalNode {
    * @param {number} key - The key to delete.
    * @returns {number|object|undefined} - The deleted key, an object {deletedKey, needsMerge}, or undefined if not found.
    */
-  delete(key) {
+  delete(key)
+  {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
     
@@ -69,39 +75,47 @@ export class InternalNode {
     // =================================================================
 
     // 1. HANDLE CHILD UNDERFLOW (MERGE/BORROW) - This must run FIRST
-  if (result?.needsMerge) {
-  const child = this.children[idx];
+    if (result?.needsMerge)
+    {
+      const child = this.children[idx];
       
       const isLeaf = child instanceof LeafNode;
       const minSize = Math.ceil(child.order / 2);
       const currentSize = isLeaf ? child.keys.length : child.children.length;
 
-  if (currentSize < minSize) {
+      if (currentSize < minSize)
+      {
         let borrowed = false;
         
         // Try to borrow from right sibling
-        if (idx < this.children.length - 1) {
+        if (idx < this.children.length - 1)
+        {
           const rightSibling = this.children[idx + 1];
           const siblingSize = isLeaf ? rightSibling.keys.length : rightSibling.children.length;
-          if (siblingSize > minSize) {
+          if (siblingSize > minSize)
+          {
             child.borrowFromSibling(this, idx + 1, idx);
             borrowed = true;
           }
         }
         
         // Try to borrow from left sibling
-        if (!borrowed && idx > 0) {
+        if (!borrowed && idx > 0)
+        {
           const leftSibling = this.children[idx - 1];
           const siblingSize = isLeaf ? leftSibling.keys.length : leftSibling.children.length;
-          if (siblingSize > minSize) {
+          if (siblingSize > minSize)
+          {
             child.borrowFromSibling(this, idx - 1, idx);
             borrowed = true;
           }
         }
         
         // If borrowing failed, merge
-  if (!borrowed) {
-          if (idx < this.children.length - 1) {
+        if (!borrowed)
+        {
+          if (idx < this.children.length - 1)
+          {
             // Merge with right sibling
             child.merge(this, idx + 1, idx);
           } else if (idx > 0) {
@@ -114,24 +128,31 @@ export class InternalNode {
 
     // 2. UPDATE INTERNAL KEYS - This runs SECOND, on the *balanced* tree
     // If a key was deleted, we might need to update our own keys
-  if (deletedKey !== undefined) {
-  const keyIdx = this.keys.indexOf(deletedKey);
-      if (keyIdx !== -1) {
+    if (deletedKey !== undefined)
+    {
+      const keyIdx = this.keys.indexOf(deletedKey);
+      if (keyIdx !== -1)
+      {
         // If we find the deleted key, replace it with the smallest key from its right subtree
-        if (keyIdx + 1 < this.children.length) {
+        if (keyIdx + 1 < this.children.length)
+        {
           // Now this call is safe, as the children are balanced
           const smallestKey = this.findSmallestKey(this.children[keyIdx + 1]);
           console.log("Replacing key", this.keys[keyIdx], "with smallest key from right subtree:", smallestKey);
           
           // Check if smallestKey is still valid (it might be undefined if the right child merged and became empty, e.g. root)
-          if (smallestKey !== undefined) {
+          if (smallestKey !== undefined)
+          {
              this.keys[keyIdx] = smallestKey;
-          } else {
+          }
+          else
+          {
              // This case can happen if the right child was merged *away*
              this.keys.splice(keyIdx, 1);
-          }
-         
-        } else {
+          } 
+        }
+        else
+        {
           // If no right subtree, just remove the key
           this.keys.splice(keyIdx, 1);
         }
@@ -141,7 +162,8 @@ export class InternalNode {
     // 3. CHECK FOR SELF-UNDERFLOW
     // Check if this node itself is now underflowing
     const minChildren = Math.ceil(this.order / 2);
-    if (this.children.length < minChildren) {
+    if (this.children.length < minChildren)
+    {
       return { deletedKey, pointer, needsMerge: true };
     }
 
@@ -154,7 +176,8 @@ export class InternalNode {
    * @param {number} siblingIdx - The index of the sibling in the parent's children array.
    * @param {number} childIdx - The index of this node in the parent's children array.
    */
-  merge(parent, siblingIdx, childIdx) {
+  merge(parent, siblingIdx, childIdx)
+  {
     const sibling = parent.children[siblingIdx];
     const isRightSibling = siblingIdx > childIdx;
     
@@ -162,7 +185,8 @@ export class InternalNode {
     const parentKeyIdx = isRightSibling ? childIdx : siblingIdx;
     const parentKey = parent.keys[parentKeyIdx];
 
-    if (isRightSibling) {
+    if (isRightSibling)
+    {
       // Merge right sibling (sibling) into this node (this)
       this.keys.push(parentKey, ...sibling.keys);
       this.children.push(...sibling.children);
@@ -170,7 +194,9 @@ export class InternalNode {
       // Remove parent key and right sibling
       parent.keys.splice(parentKeyIdx, 1);
       parent.children.splice(siblingIdx, 1);
-    } else {
+    }
+    else
+    {
       // Merge this node (this) into left sibling (sibling)
       sibling.keys.push(parentKey, ...this.keys);
       sibling.children.push(...this.children);
@@ -189,7 +215,8 @@ export class InternalNode {
   findSmallestKey(node)
   {
     // If the node itself is invalid (e.g., merged away), return undefined
-    if (!node) {
+    if (!node)
+    {
       return undefined;
     }
     
@@ -210,10 +237,12 @@ export class InternalNode {
    * @param {number} siblingIdx - The index of the sibling in the parent's children array.
    * @param {number} childIdx - The index of this node in the parent's children array.
    */
-  borrowFromSibling(parent, siblingIdx, childIdx) {
+  borrowFromSibling(parent, siblingIdx, childIdx)
+  {
     const sibling = parent.children[siblingIdx];
     
-    if (siblingIdx < childIdx) {
+    if (siblingIdx < childIdx)
+    {
       // Sibling is on the left
       const siblingKey = sibling.keys.pop();
       const siblingChild = sibling.children.pop();
@@ -222,7 +251,9 @@ export class InternalNode {
       this.keys.unshift(parentKey);
       this.children.unshift(siblingChild);
       parent.keys[siblingIdx] = siblingKey; // New parent key is sibling's popped key
-    } else {
+    }
+    else
+    {
       // Sibling is on the right
       const siblingKey = sibling.keys.shift();
       const siblingChild = sibling.children.shift();
@@ -239,7 +270,8 @@ export class InternalNode {
    * @param {number} key - The key to search for.
    * @returns {*} - The data pointer if found, otherwise null.
    */
-  search(key) {
+  search(key)
+  {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
     // Recursively call search on the appropriate child

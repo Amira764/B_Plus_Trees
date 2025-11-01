@@ -4,8 +4,10 @@
  * Represents a Leaf Node in the B+ Tree.
  * Leaf nodes store the actual keys and data pointers.
  */
-export class LeafNode {
-  constructor(order) {
+export class LeafNode
+{
+  constructor(order)
+  {
     this.order = order; // p_leaf = max number of data pointers
     this.keys = [];     // can have at most p_leaf keys
     this.pointers = []; // Stores originalLineNumber
@@ -21,12 +23,14 @@ export class LeafNode {
    * @param {object} BlockPointer - The { blockId, recordIndex } pointer.
    * @returns {object|null} - An object with {newKey, newNode} if a split occurred, otherwise null.
    */
-  insert(key, pointer, BlockPointer) {
+  insert(key, pointer, BlockPointer)
+  {
     let idx = 0;
     while (idx < this.keys.length && key > this.keys[idx]) idx++;
 
     // Update if key already exists
-    if (this.keys[idx] === key) {
+    if (this.keys[idx] === key)
+    {
       this.pointers[idx] = pointer;
       // FIX: Update the block pointer as well
       this.blockPointers[idx] = BlockPointer;
@@ -39,7 +43,8 @@ export class LeafNode {
     this.blockPointers.splice(idx, 0, BlockPointer);
 
     // Split when keys exceed order
-    if (this.keys.length > this.order) {
+    if (this.keys.length > this.order)
+    {
       const mid = Math.floor(this.keys.length / 2);
       const right = new LeafNode(this.order);
       
@@ -65,7 +70,8 @@ export class LeafNode {
    * @param {number} key - The key to delete.
    * @returns {object|undefined} - An object {deletedKey, pointer, needsMerge?} or undefined if not found.
    */
-  delete(key) {
+  delete(key)
+  {
     console.log("LeafNode.delete called with key:", key);
     const idx = this.keys.findIndex(k => k === key);
     if (idx === -1) return undefined; // Key not found
@@ -82,7 +88,8 @@ export class LeafNode {
 
     // Check if node needs to be merged
     const minKeys = Math.ceil(this.order / 2);
-    if (this.keys.length < minKeys) {
+    if (this.keys.length < minKeys)
+    {
       return { deletedKey, pointer, needsMerge: true };
     }
 
@@ -96,14 +103,16 @@ export class LeafNode {
    * @param {number} siblingIdx - The index of the sibling in the parent's children array.
    * @param {number} childIdx - The index of this node in the parent's children array.
    */
-  merge(parent, siblingIdx, childIdx) {
+  merge(parent, siblingIdx, childIdx)
+  {
     const sibling = parent.children[siblingIdx];
     const isRightSibling = siblingIdx > childIdx;
     
     // The key from the parent that separates these two nodes
     const parentKeyIdx = isRightSibling ? childIdx : siblingIdx;
 
-    if (isRightSibling) {
+    if (isRightSibling)
+    {
       // Merge right sibling (sibling) into this node (this)
       this.keys.push(...sibling.keys);
       this.pointers.push(...sibling.pointers);
@@ -114,7 +123,9 @@ export class LeafNode {
       // Remove parent key and right sibling
       parent.keys.splice(parentKeyIdx, 1);
       parent.children.splice(siblingIdx, 1);
-    } else {
+    }
+    else
+    {
       // Merge this node (this) into left sibling (sibling)
       sibling.keys.push(...this.keys);
       sibling.pointers.push(...this.pointers);
@@ -134,10 +145,12 @@ export class LeafNode {
    * @param {number} siblingIdx - The index of the sibling in the parent's children array.
    * @param {number} childIdx - The index of this node in the parent's children array.
    */
-  borrowFromSibling(parent, siblingIdx, childIdx) {
+  borrowFromSibling(parent, siblingIdx, childIdx)
+  {
     const sibling = parent.children[siblingIdx];
     
-    if (siblingIdx < childIdx) {
+    if (siblingIdx < childIdx)
+    {
       // Sibling is on the left
       const siblingKey = sibling.keys.pop();
       const siblingPointer = sibling.pointers.pop();
@@ -150,7 +163,9 @@ export class LeafNode {
       
       // Update parent key (which is at index childIdx - 1, or siblingIdx)
       parent.keys[siblingIdx] = this.keys[0]; // New separator is first key of current node
-    } else {
+    }
+    else
+    {
       // Sibling is on the right
       const siblingKey = sibling.keys.shift();
       const siblingPointer = sibling.pointers.shift();
@@ -171,7 +186,8 @@ export class LeafNode {
    * @param {number} key - The key to search for.
    * @returns {*} - The data pointer if found, otherwise null.
    */
-  search(key) {
+  search(key)
+  {
     const idx = this.keys.indexOf(key);
     return idx !== -1 ? this.pointers[idx] : null;
   }

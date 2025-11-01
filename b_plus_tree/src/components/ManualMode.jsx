@@ -3,12 +3,14 @@ import EnhancedBPlusTreeVisualizer from './BPlusTreeVisualizer';
 import { FileIndexManager } from '../models/filesystem';
 import styles from '../styles/ManualMode.module.css';
 
-const ManualMode = () => {
+const ManualMode = () =>
+{
   const [treeVersion, setTreeVersion] = useState(0);
   const [newRecord, setNewRecord] = useState({ SSN: "" });
   const fileIndexRef = useRef(null);
 
-  const initializeManager = () => {
+  const initializeManager = () =>
+  {
     if (!fileIndexRef.current) {
       fileIndexRef.current = new FileIndexManager();
     }
