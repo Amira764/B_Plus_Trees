@@ -5,8 +5,6 @@ const EnhancedBPlusTreeVisualizer = ({ tree }) =>
 {
   const svgRef = useRef();
   const [hoveredNode, setHoveredNode] = useState(null);
-
-  console.log("Rendering BPlusTreeVisualizer with tree:", tree);
   
   useEffect(() =>
   {
