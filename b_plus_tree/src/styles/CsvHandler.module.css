@@ -25,19 +25,6 @@
   flex-wrap: wrap;
 }
 
-.recordForm {
-  margin: 20px 0;
-  padding: 20px;
-  background: #f8f9fb;
-  border-radius: 8px;
-  border: 1px solid #e6e9ec;
-}
-
-.recordForm h3 {
-  margin: 0 0 16px 0;
-  color: #2d3748;
-}
-
 .formFields {
   display: flex;
   gap: 12px;
