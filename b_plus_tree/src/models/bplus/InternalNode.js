@@ -17,12 +17,12 @@ export class InternalNode {
    * @param {*} pointer - The data pointer associated with the key.
    * @returns {object|null} - An object with {newKey, newNode} if a split occurred, otherwise null.
    */
-  insert(key, pointer) {
+  insert(key, pointer, BlockPointer) {
     let idx = 0;
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
     
-    // Recursively call insert on the appropriate child
-    const result = this.children[idx].insert(key, pointer);
+    // Recursively call insert on the appropriate child and forward BlockPointer
+    const result = this.children[idx].insert(key, pointer, BlockPointer);
 
     // If the child split, we need to add the new key and child
     if (result) {
@@ -56,7 +56,11 @@ export class InternalNode {
     while (idx < this.keys.length && key >= this.keys[idx]) idx++;
     
     const result = this.children[idx].delete(key);
-    const deletedKey = result?.needsMerge ? result.deletedKey : result;
+    if (result === undefined) return undefined;
+
+    // Normalize result to extract deletedKey and pointer
+    const deletedKey = result?.needsMerge ? result.deletedKey : (result.deletedKey ?? result);
+    const pointer = result?.pointer ?? undefined;
 
     // =================================================================
     // *** FIX: The order of these two blocks has been swapped. ***
@@ -65,14 +69,14 @@ export class InternalNode {
     // =================================================================
 
     // 1. HANDLE CHILD UNDERFLOW (MERGE/BORROW) - This must run FIRST
-    if (result?.needsMerge) {
-      const child = this.children[idx];
+  if (result?.needsMerge) {
+  const child = this.children[idx];
       
       const isLeaf = child instanceof LeafNode;
       const minSize = Math.ceil(child.order / 2);
       const currentSize = isLeaf ? child.keys.length : child.children.length;
 
-      if (currentSize < minSize) {
+  if (currentSize < minSize) {
         let borrowed = false;
         
         // Try to borrow from right sibling
@@ -96,7 +100,7 @@ export class InternalNode {
         }
         
         // If borrowing failed, merge
-        if (!borrowed) {
+  if (!borrowed) {
           if (idx < this.children.length - 1) {
             // Merge with right sibling
             child.merge(this, idx + 1, idx);
@@ -110,8 +114,8 @@ export class InternalNode {
 
     // 2. UPDATE INTERNAL KEYS - This runs SECOND, on the *balanced* tree
     // If a key was deleted, we might need to update our own keys
-    if (deletedKey !== undefined) {
-      const keyIdx = this.keys.indexOf(deletedKey);
+  if (deletedKey !== undefined) {
+  const keyIdx = this.keys.indexOf(deletedKey);
       if (keyIdx !== -1) {
         // If we find the deleted key, replace it with the smallest key from its right subtree
         if (keyIdx + 1 < this.children.length) {
@@ -138,10 +142,10 @@ export class InternalNode {
     // Check if this node itself is now underflowing
     const minChildren = Math.ceil(this.order / 2);
     if (this.children.length < minChildren) {
-      return { deletedKey, needsMerge: true };
+      return { deletedKey, pointer, needsMerge: true };
     }
 
-    return deletedKey;
+    return { deletedKey, pointer };
   }
 
   /**

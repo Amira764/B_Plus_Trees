@@ -202,7 +202,7 @@ export class FileIndexManager {
     if (this.bPlusTree) {
       const numericSSN = Number(record.ssn.replace('EG-', ''));
       if (isNaN(numericSSN)) throw new Error('Invalid SSN format');
-      this.bPlusTree.insert(numericSSN, record.originalLineNumber);
+      this.bPlusTree.insert(numericSSN, record.originalLineNumber, pointer);
       console.log(
         `Inserted record (SSN: ${numericSSN}, Line: ${record.originalLineNumber}) into B+ Tree → Block ${pointer.blockId}, Slot ${pointer.recordIndex}`
       );
@@ -219,42 +219,36 @@ export class FileIndexManager {
   delete_record(identifier)
   {
     const recordToDelete = this.get_record_by_identifier(identifier);
-    this.allRecords[recordToDelete.originalLineNumber-1].deleted_flag = 1;
-
-    if (!recordToDelete)
-    {
+    if (!recordToDelete) {
       console.log(`Record ${identifier} not found for deletion.`);
       return false;
     }
 
-    let presentInAnyBlock = false;
-    for (const block of this.blocks)
-    {
-      const found = block.records.findLast(
-        (r) => r.originalLineNumber === recordToDelete.originalLineNumber
-      );
-      if (found)
-      {
-        presentInAnyBlock = true;
-        block.mark_deleted(recordToDelete.originalLineNumber);
-        console.log(`Marked record with SSN ${recordToDelete.ssn} as deleted.`);
-        break;
-      }
-    }
-    if(!presentInAnyBlock)
-    {
-      alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
-    }
+    // Mark in master record list
+    this.allRecords[recordToDelete.originalLineNumber - 1].deleted_flag = 1;
 
-    if (this.bPlusTree)
-    {
+    // If we have an index, ask it to delete and return the pointer to the slot
+    if (this.bPlusTree) {
       const numericSSN = Number(recordToDelete.ssn.replace('EG-', ''));
-      this.bPlusTree.delete(numericSSN);
-      console.log(
-        `Deleted record ${recordToDelete.originalLineNumber} (SSN: ${recordToDelete.ssn}) from B+ Tree index.`
-      );
-    }
-    console.log(`Record ${this.allRecords[recordToDelete.originalLineNumber-1]} deletion process completed.`);
+      const result = this.bPlusTree.delete(numericSSN);
+
+      // If tree returned pointer info, use it to update the specific block slot directly
+      if (result?.pointer) {
+        const { blockId, recordIndex } = result.pointer;
+        const block = this.blocks[blockId];
+        if (block && block.records[recordIndex]) {
+          block.records[recordIndex].deleted_flag = 1;
+          console.log(`Marked record at Block ${blockId}, Slot ${recordIndex} as deleted.`);
+        } else {
+          console.log(`Pointer returned by B+ Tree invalid (block ${blockId}, slot ${recordIndex}). Falling back to full scan.`);
+        }
+      } else {
+        alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
+      }
+
+      console.log(`Deleted record ${recordToDelete.originalLineNumber} (SSN: ${recordToDelete.ssn}) from B+ Tree index.`);
+    } 
+    console.log(`Record ${this.allRecords[recordToDelete.originalLineNumber - 1]} deletion process completed.`);
     return true;
   }
 
@@ -280,4 +274,5 @@ export class FileIndexManager {
       console.log("No B+ Tree initialized yet.");
     }
   }
+
 }

@@ -21,14 +21,14 @@ export class BPlusTree {
    * @param {number|string} key - The key to insert.
    * @param {*} pointer - The data pointer to associate with the key.
    */
-  insert(key, pointer) {
+  insert(key, pointer, BlockPointer) {
     const numericKey = Number(key);
     if (isNaN(numericKey)) {
       throw new Error('Invalid key: must be a number');
     }
     
     // Insert into the root
-    const result = this.root.insert(numericKey, pointer);
+    const result = this.root.insert(numericKey, pointer, BlockPointer);
     
     // If the root split, create a new root
     if (result) {
@@ -53,7 +53,10 @@ export class BPlusTree {
     
     console.log("root type:", typeof(this.root));
     const result = this.root.delete(numericKey);
-    const deletedKey = result?.needsMerge ? result.deletedKey : result;
+    if (result === undefined) return undefined;
+
+    const deletedKey = result?.needsMerge ? result.deletedKey : (result.deletedKey ?? result);
+    const pointer = result?.pointer ?? undefined;
     
     // Handle root shrinkage
     if (this.root instanceof InternalNode) {
@@ -72,7 +75,8 @@ export class BPlusTree {
       }
     }
     
-    return deletedKey;
+    // Return both the deleted key and the pointer (if available)
+    return { deletedKey, pointer };
   }
 
   /**

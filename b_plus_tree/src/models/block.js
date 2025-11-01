@@ -24,21 +24,6 @@ export class Block {
   }
 
 
-  mark_deleted(recordNum) {
-    let found = false;
-    for (const record of this.records) {
-      if (record.originalLineNumber === recordNum && record.deleted_flag === 0) {
-        record.deleted_flag = 1;
-        found = true;
-      }
-    }
-    if (!found) {
-      alert(`Record number ${recordNum} already deleted in block ${this.blockId}.`);
-    }
-    return found;
-  }
-
-
   display() {
     console.log(`--- Block ${this.blockId} ---`);
     if (this.records.length === 0) {

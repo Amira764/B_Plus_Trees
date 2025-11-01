@@ -8,6 +8,7 @@ export class LeafNode {
     this.keys = [];     // can have at most p_leaf keys
     this.pointers = [];
     this.next = null;   // Pointer to the next leaf node
+    this.BlockPointer = -1;   
   }
 
   /**
@@ -16,7 +17,8 @@ export class LeafNode {
    * @param {*} pointer - The data pointer associated with the key.
    * @returns {object|null} - An object with {newKey, newNode} if a split occurred, otherwise null.
    */
-  insert(key, pointer) {
+  insert(key, pointer, BlockPointer) {
+    // If a BlockPointer is provided, store it on this node.
     let idx = 0;
     while (idx < this.keys.length && key > this.keys[idx]) idx++;
 
@@ -25,7 +27,7 @@ export class LeafNode {
       this.pointers[idx] = pointer;
       return null;
     }
-
+    this.BlockPointer = BlockPointer;
     // Insert new key-pointer pair
     this.keys.splice(idx, 0, key);
     this.pointers.splice(idx, 0, pointer);
@@ -53,25 +55,28 @@ export class LeafNode {
   /**
    * Deletes a key from the leaf node.
    * @param {number} key - The key to delete.
-   * @returns {number|object|undefined} - The deleted key, an object {deletedKey, needsMerge}, or undefined if not found.
+   * @returns {object|undefined} - An object {deletedKey, pointer, needsMerge?} or undefined if not found.
    */
   delete(key) {
     console.log("LeafNode.delete called with key:", key);
     const idx = this.keys.findIndex(k => k === key);
-    if (idx !== -1) {
-      const deletedKey = this.keys[idx];
-      this.keys.splice(idx, 1);
-      this.pointers.splice(idx, 1);
+    if (idx === -1) return undefined; // Key not found
 
-      // Check if node needs to be merged
-      const minKeys = Math.ceil(this.order / 2);
-      if (this.keys.length < minKeys) {
-        return { deletedKey, needsMerge: true };
-      }
-      
-      return deletedKey;  // Return the deleted key so parent nodes can update
+    const deletedKey = this.keys[idx];
+    const pointer = this.BlockPointer;
+
+    // Remove key and pointer
+    this.keys.splice(idx, 1);
+    this.pointers.splice(idx, 1);
+
+    // Check if node needs to be merged
+    const minKeys = Math.ceil(this.order / 2);
+    if (this.keys.length < minKeys) {
+      return { deletedKey, pointer, needsMerge: true };
     }
-    return undefined; // Key not found
+
+    // Return deletedKey and pointer so callers can act on the underlying block immediately
+    return { deletedKey, pointer };
   }
 
   /**
