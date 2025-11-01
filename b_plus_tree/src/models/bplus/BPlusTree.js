@@ -4,13 +4,15 @@ import { LeafNode } from './LeafNode.js';
 /**
  * Represents the B+ Tree structure.
  */
-export class BPlusTree {
+export class BPlusTree
+{
   /**
    * Creates a new B+ Tree.
    * @param {number} [orderInternal=3] - The order (max children) for internal nodes.
    * @param {number} [orderLeaf=2] - The order (max keys) for leaf nodes.
    */
-  constructor(orderInternal = 3, orderLeaf = 2) {
+  constructor(orderInternal = 3, orderLeaf = 2)
+  {
     this.orderInternal = orderInternal;
     this.orderLeaf = orderLeaf;
     this.root = new LeafNode(orderLeaf);
@@ -21,9 +23,12 @@ export class BPlusTree {
    * @param {number|string} key - The key to insert.
    * @param {*} pointer - The data pointer to associate with the key.
    */
-  insert(key, pointer, BlockPointer) {
+  insert(key, pointer, BlockPointer)
+  {
+    console.log(`BlockPointer Insert: ${BlockPointer.blockId}, ${BlockPointer.recordIndex}`);
     const numericKey = Number(key);
-    if (isNaN(numericKey)) {
+    if (isNaN(numericKey))
+    {
       throw new Error('Invalid key: must be a number');
     }
     
@@ -31,7 +36,8 @@ export class BPlusTree {
     const result = this.root.insert(numericKey, pointer, BlockPointer);
     
     // If the root split, create a new root
-    if (result) {
+    if (result)
+    {
       const { newKey, newNode } = result;
       const newRoot = new InternalNode(this.orderInternal);
       newRoot.keys = [newKey];
@@ -45,9 +51,11 @@ export class BPlusTree {
    * @param {number|string} key - The key to delete.
    * @returns {*} - The deleted key if found, otherwise undefined.
    */
-  delete(key) {
+  delete(key)
+  {
     const numericKey = Number(key);
-    if (isNaN(numericKey)) {
+    if (isNaN(numericKey))
+    {
       throw new Error('Invalid key: must be a number');
     }
     
@@ -59,18 +67,24 @@ export class BPlusTree {
     const pointer = result?.pointer ?? undefined;
     
     // Handle root shrinkage
-    if (this.root instanceof InternalNode) {
+    if (this.root instanceof InternalNode)
+    {
       // If root has only one child, make that child the new root
-      if (this.root.children.length === 1) {
+      if (this.root.children.length === 1)
+      {
         this.root = this.root.children[0];
       }
       // If root is empty (but not a leaf), make its first child the new root
-      else if (this.root.keys.length === 0 && !(this.root instanceof LeafNode)) {
+      else if (this.root.keys.length === 0 && !(this.root instanceof LeafNode))
+      {
         this.root = this.root.children[0];
       }
-    } else if (this.root instanceof LeafNode) {
+    }
+    else if (this.root instanceof LeafNode)
+    {
       // If root is an empty leaf, reset the tree
-      if (this.root.keys.length === 0) {
+      if (this.root.keys.length === 0)
+      {
         this.root = new LeafNode(this.orderLeaf);
       }
     }
@@ -84,9 +98,11 @@ export class BPlusTree {
    * @param {number|string} key - The key to search for.
    * @returns {*} - The data pointer associated with the key, or null if not found.
    */
-  search(key) {
+  search(key)
+  {
     const numericKey = Number(key);
-    if (isNaN(numericKey)) {
+    if (isNaN(numericKey))
+    {
       throw new Error('Invalid key: must be a number');
     }
     return this.root.search(numericKey);
@@ -99,12 +115,14 @@ export class BPlusTree {
   /**
    * Logs a level-by-level visualization of the tree to the console.
    */
-  visualize() {
+  visualize()
+  {
     console.log("\n🌳 B+ TREE VISUALIZATION");
     const levels = [];
     this._collect_levels(this.root, 0, levels);
 
-    for (let i = 0; i < levels.length; i++) {
+    for (let i = 0; i < levels.length; i++)
+    {
       const level = levels[i];
       const label = i === 0 ? "ROOT" : `LEVEL ${i}`;
       console.log(`\n${label}:`);
@@ -121,12 +139,15 @@ export class BPlusTree {
    * Helper function for visualize() to collect nodes by level.
    * @private
    */
-  _collect_levels(node, level, levels) {
+  _collect_levels(node, level, levels)
+  {
     if (!levels[level]) levels[level] = [];
     levels[level].push(node);
 
-    if (node instanceof InternalNode) {
-      for (const child of node.children) {
+    if (node instanceof InternalNode)
+    {
+      for (const child of node.children)
+      {
         this._collect_levels(child, level + 1, levels);
       }
     }
@@ -137,11 +158,15 @@ export class BPlusTree {
    * @param {InternalNode|LeafNode} [node=this.root] - The node to start printing from.
    * @param {number} [level=0] - The current indentation level.
    */
-  print(node = this.root, level = 0) {
+  print(node = this.root, level = 0)
+  {
     const indent = "  ".repeat(level);
-    if (node instanceof LeafNode) {
+    if (node instanceof LeafNode)
+    {
       console.log(`${indent}Leaf → [${node.keys.join(", ")}]`);
-    } else {
+    }
+    else
+    {
       console.log(`${indent}Internal → [${node.keys.join(", ")}]`);
       for (const child of node.children) this.print(child, level + 1);
     }

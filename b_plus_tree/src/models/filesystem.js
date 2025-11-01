@@ -11,8 +11,10 @@ import { BPlusTree } from "./bplus/BPlusTree.js";
  *  - Fixed-length records
  *  - A B+ Tree index on the SSN field
  */
-export class FileIndexManager {
-  constructor() {
+export class FileIndexManager
+{
+  constructor()
+  {
     this.blocks = [new Block(0)];
     this.allRecords = [];
     this.bPlusTree = this.initialize_tree();
@@ -24,9 +26,11 @@ export class FileIndexManager {
    * @param {Object} fields - Record fields (NAME, SSN, etc.)
    * @returns {Record} The created record
    */
-  create_record(fields) {
+  create_record(fields)
+  {
     // Ensure SSN is provided
-    if (!fields.SSN) {
+    if (!fields.SSN)
+    {
       throw new Error("SSN is required");
     }
 
@@ -51,9 +55,11 @@ export class FileIndexManager {
     return record;
   }
 
-  deep_copy_record(record) {
+  deep_copy_record(record)
+  {
     // Ensure SSN is provided
-    if (!record.ssn) {
+    if (!record.ssn)
+    {
       throw new Error("SSN is required");
     }
     // Ensure SSN has EG- prefix
@@ -81,9 +87,11 @@ export class FileIndexManager {
    * Loads a CSV file containing employee records into memory.
    * Each record is wrapped as a Record instance.
    */
-  load_csv(csvText) {
+  load_csv(csvText)
+  {
     const lines = csvText.trim().split("\n");
-    if (lines.length < 2) {
+    if (lines.length < 2)
+    {
       console.error("CSV file is empty or has no data.");
       return;
     }
@@ -91,17 +99,22 @@ export class FileIndexManager {
     const headers = lines[0].split(",").map((h) => h.trim());
     let loadedCount = 0;
 
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = 1; i < lines.length; i++)
+    {
       const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-      if (values.length === headers.length) {
+      if (values.length === headers.length)
+      {
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] ? values[index].replace(/"/g, "") : "";
         });
-        try {
+        try
+        {
           this.create_record(row);
           loadedCount++;
-        } catch (error) {
+        }
+        catch (error)
+        {
           console.error(`Error loading record at line ${i}: ${error.message}`);
         }
       }
@@ -113,7 +126,8 @@ export class FileIndexManager {
   /**
    * Initializes the B+ Tree in CSV mode
    */
-  initialize_tree() {
+  initialize_tree()
+  {
     return new BPlusTree(3, 2, 'csv'); // internal=3, leaf=2, csv mode
   }
 
@@ -122,16 +136,21 @@ export class FileIndexManager {
    * @param {string|number} identifier - SSN ("EG-1234") or record number (4)
    * @returns {Record|null} Found record or null
    */
-  get_record_by_identifier(identifier) {
+  get_record_by_identifier(identifier)
+  {
     let record = null;
 
     // If it's a number, assume it's a record number
-    if (typeof identifier === 'number') {
+    if (typeof identifier === 'number')
+    {
       const recordIndex = identifier - 1;
-      if (recordIndex >= 0 && recordIndex < this.allRecords.length) {
+      if (recordIndex >= 0 && recordIndex < this.allRecords.length)
+      {
         record = this.allRecords[recordIndex];
       }
-    } else if (typeof identifier === 'string') {
+    }
+    else if (typeof identifier === 'string')
+    {
       // Try to find by SSN
       const searchSSN = identifier.startsWith('EG-') ? identifier : `EG-${identifier}`;
       for (const block of this.blocks) {
@@ -157,8 +176,10 @@ export class FileIndexManager {
       if (!record) throw new Error(`Invalid record number: ${recordOrFields}`);
 
       // Prevent duplicates
-      for (const block of this.blocks) {
-        if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber)) {
+      for (const block of this.blocks)
+      {
+        if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber))
+        {
           console.log(`Record ${recordOrFields} is already in the B+ tree`);
           alert(`Record ${recordOrFields+1} is already in the B+ tree`);
           return record;
@@ -199,7 +220,8 @@ export class FileIndexManager {
     };
 
     // Insert into B+ Tree using numeric SSN
-    if (this.bPlusTree) {
+    if (this.bPlusTree)
+    {
       const numericSSN = Number(record.ssn.replace('EG-', ''));
       if (isNaN(numericSSN)) throw new Error('Invalid SSN format');
       this.bPlusTree.insert(numericSSN, record.originalLineNumber, pointer);
@@ -233,16 +255,23 @@ export class FileIndexManager {
       const result = this.bPlusTree.delete(numericSSN);
 
       // If tree returned pointer info, use it to update the specific block slot directly
-      if (result?.pointer) {
+      console.log(`BlockPointer delete: ${result.pointer.blockId}, ${result.pointer.recordIndex}`);
+      if (result?.pointer)
+      {
         const { blockId, recordIndex } = result.pointer;
         const block = this.blocks[blockId];
-        if (block && block.records[recordIndex]) {
+        if (block && block.records[recordIndex])
+        {
           block.records[recordIndex].deleted_flag = 1;
           console.log(`Marked record at Block ${blockId}, Slot ${recordIndex} as deleted.`);
-        } else {
+        }
+        else
+        {
           console.log(`Pointer returned by B+ Tree invalid (block ${blockId}, slot ${recordIndex}). Falling back to full scan.`);
         }
-      } else {
+      }
+      else
+      {
         alert(`Record with SSN ${recordToDelete.ssn} and record number ${recordToDelete.originalLineNumber} not found in any block.`);
       }
 
@@ -256,9 +285,11 @@ export class FileIndexManager {
   /**
    * Displays all file blocks and their record contents.
    */
-  show_blocks() {
+  show_blocks()
+  {
     console.log("\n📦 --- Current File Blocks State ---");
-    for (const block of this.blocks) {
+    for (const block of this.blocks)
+    {
       block.display();
     }
   }
@@ -266,11 +297,15 @@ export class FileIndexManager {
   /**
    * Prints the current B+ Tree structure.
    */
-  show_tree() {
+  show_tree()
+  {
     console.log("\n🌳 --- Current B+ Tree Structure ---");
-    if (this.bPlusTree) {
+    if (this.bPlusTree)
+    {
       this.bPlusTree.visualize();
-    } else {
+    }
+    else
+    {
       console.log("No B+ Tree initialized yet.");
     }
   }
