@@ -27,7 +27,8 @@ export class Block
     this.records.push(record);
     return true;
   }
-  
+
+
   display()
   {
     console.log(`--- Block ${this.blockId} ---`);

@@ -10,7 +10,7 @@ const CsvHandler = () =>
   const [previewRows, setPreviewRows] = useState([]);
   const [detailsText, setDetailsText] = useState("");
   const [treeVersion, setTreeVersion] = useState(0);
-  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [recordNumInput, setRecordNumInput] = useState("");
   const fileIndexRef = useRef(null);
@@ -31,7 +31,7 @@ const CsvHandler = () =>
         skipEmptyLines: true,
         complete: (results) => {
           setPreviewRows(results.data || []);
-          setPreviewVisible(false);
+          setPreviewVisible(true);
           setSelectedRecord(null);
           setRecordNumInput("");
           setDetailsText("");
