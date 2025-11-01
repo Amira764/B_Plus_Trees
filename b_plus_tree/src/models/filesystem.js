@@ -255,7 +255,6 @@ export class FileIndexManager
       const result = this.bPlusTree.delete(numericSSN);
 
       // If tree returned pointer info, use it to update the specific block slot directly
-      console.log(`BlockPointer delete: ${result.pointer.blockId}, ${result.pointer.recordIndex}`);
       if (result?.pointer)
       {
         const { blockId, recordIndex } = result.pointer;

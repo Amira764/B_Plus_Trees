@@ -25,7 +25,6 @@ export class BPlusTree
    */
   insert(key, pointer, BlockPointer)
   {
-    console.log(`BlockPointer Insert: ${BlockPointer.blockId}, ${BlockPointer.recordIndex}`);
     const numericKey = Number(key);
     if (isNaN(numericKey))
     {
