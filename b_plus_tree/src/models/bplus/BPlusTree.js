@@ -39,11 +39,11 @@ export class BPlusTree
 		}
 
 		console.log("root type:", typeof (this.root));
-		const result = this.root.delete(numericKey);
+		const result = this.root.delete(numericKey); //returns deleted key and pointer
 		if (result === undefined) return undefined;
 
 		const deletedKey = result?.needsMerge ? result.deletedKey : (result.deletedKey ?? result);
-		const pointer = result?.pointer ?? undefined;
+		const pointer = result?.pointer ?? undefined; //block Id and record index
 
     	// Handle root shrinkage
 		if (this.root instanceof InternalNode)
@@ -56,7 +56,7 @@ export class BPlusTree
       		// If root is empty (but not a leaf), make its first child the new root
 			else if (this.root.keys.length === 0 && !(this.root instanceof LeafNode))
 			{
-				this.root = this.root.children[0];
+				this.root = this.root.children[0]; //root has 2 children, merged into 1 node, it becomes new root
 			}
 		}
 		else if (this.root instanceof LeafNode)

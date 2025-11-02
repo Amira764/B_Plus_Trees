@@ -41,9 +41,9 @@ export class InternalNode
 	delete(key)
 	{
 		let idx = 0;
-		while (idx < this.keys.length && key >= this.keys[idx]) idx++;
+		while (idx < this.keys.length && key >= this.keys[idx]) idx++; //which subtree(node) in this internal node
 
-		const result = this.children[idx].delete(key);
+		const result = this.children[idx].delete(key); //recursive
 		if (result === undefined) return undefined;
 
 		const deletedKey = result?.needsMerge ? result.deletedKey : (result.deletedKey ?? result);
@@ -110,7 +110,7 @@ export class InternalNode
 		{
 			const keyIdx = this.keys.indexOf(deletedKey);
 
-			if (keyIdx !== -1) // Regular case: Key is still in this parent node
+			if (keyIdx !== -1) // Regular case: Key is still in this parent node, I need to replace it
 			{
 				if (keyIdx + 1 < this.children.length)
 				{
@@ -123,19 +123,19 @@ export class InternalNode
 					}
 					else
 					{
-						this.keys.splice(keyIdx, 1);
+						this.keys.splice(keyIdx, 1); // No keys in right subtree, just remove the key from internal node
 					}
 				}
 				else
 				{
-					this.keys.splice(keyIdx, 1);
+					this.keys.splice(keyIdx, 1); // No right subtree, just remove the key from internal node
 				}
 			}
 			else if (mergeHappened) // Handle edge case where key was pulled down by merge
 			{
 				// The key was removed from this node by the merge.
 				// We must now find it *inside the merged child* and replace it there.
-				const mergedChildIdx = (idx > 0) ? idx - 1 : 0;
+				const mergedChildIdx = (idx > 0) ? idx - 1 : 0; //it is on the left
 				const mergedChild = this.children[mergedChildIdx];
 
 				if (mergedChild)
@@ -155,7 +155,8 @@ export class InternalNode
 							{
 								mergedChild.keys.splice(keyIdxInChild, 1);
 							}
-						} else
+						}
+						else
 						{
 							mergedChild.keys.splice(keyIdxInChild, 1);
 						}
@@ -180,10 +181,12 @@ export class InternalNode
 		const isRightSibling = siblingIdx > childIdx;
 
 		const parentKeyIdx = isRightSibling ? childIdx : siblingIdx;
-		const parentKey = parent.keys[parentKeyIdx];
+		const parentKey = parent.keys[parentKeyIdx]; // demoting 
 
 		if (isRightSibling)
 		{
+			//           [parentKey]
+			// [this node]         [right sibling]
 			this.keys.push(parentKey, ...sibling.keys);
 			this.children.push(...sibling.children);
 
@@ -192,6 +195,8 @@ export class InternalNode
 		}
 		else
 		{
+			//              [parentKey]
+			// [left sibling]         [this node]
 			sibling.keys.push(parentKey, ...this.keys);
 			sibling.children.push(...this.children);
 
@@ -221,16 +226,20 @@ export class InternalNode
 
 		if (siblingIdx < childIdx)
 		{
+			//            [25]
+			// [10, 15, 20]  [30]
 			const siblingKey = sibling.keys.pop();
 			const siblingChild = sibling.children.pop();
 			const parentKey = parent.keys[siblingIdx];
 
-			this.keys.unshift(parentKey);
+			this.keys.unshift(parentKey); // shift right
 			this.children.unshift(siblingChild);
 			parent.keys[siblingIdx] = siblingKey;
 		}
 		else
 		{
+			//    [25]
+			// [20]  [30, 35, 40]
 			const siblingKey = sibling.keys.shift();
 			const siblingChild = sibling.children.shift();
 			const parentKey = parent.keys[childIdx];
@@ -239,12 +248,5 @@ export class InternalNode
 			this.children.push(siblingChild);
 			parent.keys[childIdx] = siblingKey;
 		}
-	}
-
-	search(key)
-	{
-		let idx = 0;
-		while (idx < this.keys.length && key >= this.keys[idx]) idx++;
-		return this.children[idx].search(key);
 	}
 }
