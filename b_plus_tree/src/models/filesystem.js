@@ -104,31 +104,6 @@ export class FileIndexManager
 		return new BPlusTree(3, 2, 'csv'); // internal=3, leaf=2, csv mode
 	}
 
-	get_record_by_identifier(identifier)
-	{
-		let record = null;
-
-		if (typeof identifier === 'number')
-		{
-			const recordIndex = identifier - 1;
-			if (recordIndex >= 0 && recordIndex < this.allRecords.length)
-			{
-				record = this.allRecords[recordIndex];
-			}
-		}
-		else if (typeof identifier === 'string')
-		{
-			const searchSSN = identifier.startsWith('EG-') ? identifier : `EG-${identifier}`;
-			for (const block of this.blocks)
-			{
-				record = block.records.findLast((rec) => rec.ssn === searchSSN);
-				if (record) break;
-			}
-		}
-
-		return record;
-	}
-
 	insert_record(recordOrFields, mode = false)
 	{
 		let record;
@@ -194,14 +169,9 @@ export class FileIndexManager
 
 	delete_record(identifier)
 	{
-		const recordToDelete = this.get_record_by_identifier(identifier);
-		if (!recordToDelete)
-		{
-			console.log(`Record ${identifier} not found for deletion.`);
-			return false;
-		}
+		let recordToDelete = this.allRecords[identifier - 1];
 
-		this.allRecords[recordToDelete.originalLineNumber - 1].deleted_flag = 1;
+		recordToDelete.deleted_flag = 1;
 
 		if (this.bPlusTree)
 		{
