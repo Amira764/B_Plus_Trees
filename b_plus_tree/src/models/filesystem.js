@@ -104,42 +104,24 @@ export class FileIndexManager
 		return new BPlusTree(3, 2, 'csv'); // internal=3, leaf=2, csv mode
 	}
 
-	insert_record(recordOrFields, mode = false)
+	insert_record(recordOrFields)
 	{
 		let record;
 
-		if (!mode)
+		record = this.allRecords[recordOrFields];
+		console.log("Inserting record in mode:", record);
+		for (const block of this.blocks)
 		{
-			record = this.get_record_by_identifier(recordOrFields);
-			if (!record) throw new Error(`Invalid record number: ${recordOrFields}`);
-
-			for (const block of this.blocks)
+			if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
 			{
-				if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber))
-				{
-					console.log(`Record ${recordOrFields} is already in the B+ tree`);
-					alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					return record;
-				}
+				console.log(`Record ${recordOrFields + 1} is already in the B+ tree`);
+				alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
+				return record;
 			}
 		}
-		else
-		{
-			record = this.allRecords[recordOrFields];
-			console.log("Inserting record in mode:", record);
-			for (const block of this.blocks)
-			{
-				if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
-				{
-					console.log(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					return record;
-				}
-			}
-			this.allRecords[recordOrFields].deleted_flag = 0;
-			record = this.deep_copy_record(record);
-		}
-
+		this.allRecords[recordOrFields].deleted_flag = 0;
+		record = this.deep_copy_record(record);
+		
 		let blockToInsert = this.blocks.find(b => !b.is_full());
 		if (!blockToInsert)
 		{
