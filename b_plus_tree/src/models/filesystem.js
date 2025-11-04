@@ -104,67 +104,24 @@ export class FileIndexManager
 		return new BPlusTree(3, 2, 'csv'); // internal=3, leaf=2, csv mode
 	}
 
-	get_record_by_identifier(identifier)
-	{
-		let record = null;
-
-		if (typeof identifier === 'number')
-		{
-			const recordIndex = identifier - 1;
-			if (recordIndex >= 0 && recordIndex < this.allRecords.length)
-			{
-				record = this.allRecords[recordIndex];
-			}
-		}
-		else if (typeof identifier === 'string')
-		{
-			const searchSSN = identifier.startsWith('EG-') ? identifier : `EG-${identifier}`;
-			for (const block of this.blocks)
-			{
-				record = block.records.findLast((rec) => rec.ssn === searchSSN);
-				if (record) break;
-			}
-		}
-
-		return record;
-	}
-
-	insert_record(recordOrFields, mode = false)
+	insert_record(recordOrFields)
 	{
 		let record;
 
-		if (!mode)
+		record = this.allRecords[recordOrFields];
+		console.log("Inserting record in mode:", record);
+		for (const block of this.blocks)
 		{
-			record = this.get_record_by_identifier(recordOrFields);
-			if (!record) throw new Error(`Invalid record number: ${recordOrFields}`);
-
-			for (const block of this.blocks)
+			if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
 			{
-				if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber))
-				{
-					console.log(`Record ${recordOrFields} is already in the B+ tree`);
-					alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					return record;
-				}
+				console.log(`Record ${recordOrFields + 1} is already in the B+ tree`);
+				alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
+				return record;
 			}
 		}
-		else
-		{
-			record = this.allRecords[recordOrFields];
-			console.log("Inserting record in mode:", record);
-			for (const block of this.blocks)
-			{
-				if (block.records.some(r => r && r.originalLineNumber === record.originalLineNumber && record.deleted_flag === 0))
-				{
-					console.log(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					alert(`Record ${recordOrFields + 1} is already in the B+ tree`);
-					return record;
-				}
-			}
-			this.allRecords[recordOrFields].deleted_flag = 0;
-			record = this.deep_copy_record(record);
-		}
-
+		this.allRecords[recordOrFields].deleted_flag = 0;
+		record = this.deep_copy_record(record);
+		
 		let blockToInsert = this.blocks.find(b => !b.is_full());
 		if (!blockToInsert)
 		{
@@ -194,14 +151,9 @@ export class FileIndexManager
 
 	delete_record(identifier)
 	{
-		const recordToDelete = this.get_record_by_identifier(identifier);
-		if (!recordToDelete)
-		{
-			console.log(`Record ${identifier} not found for deletion.`);
-			return false;
-		}
+		let recordToDelete = this.allRecords[identifier - 1];
 
-		this.allRecords[recordToDelete.originalLineNumber - 1].deleted_flag = 1;
+		recordToDelete.deleted_flag = 1;
 
 		if (this.bPlusTree)
 		{

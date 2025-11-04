@@ -46,7 +46,7 @@ export class LeafNode
 	delete(key)
 	{
 		console.log("LeafNode.delete called with key:", key);
-		const idx = this.keys.findIndex(k => k === key);
+		const idx = this.keys.indexOf(key);
 		if (idx === -1) return undefined;
 
 		const deletedKey = this.keys[idx];
@@ -120,11 +120,5 @@ export class LeafNode
 
 			parent.keys[childIdx] = sibling.keys[0];
 		}
-	}
-
-	search(key)
-	{
-		const idx = this.keys.indexOf(key);
-		return idx !== -1 ? this.pointers[idx] : null;
 	}
 }
